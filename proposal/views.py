@@ -1,11 +1,12 @@
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponse, JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods, require_POST
 
+from .invite_utils import get_invite_session, set_invite_session
 from .media_utils import video_mime_type
-from .models import AskClick, DateProposal, FoodOption, SiteContent, TimeSlot
+from .models import AskClick, DateProposal, FoodOption, Invite, SiteContent, TimeSlot
 
 
 def _active_food_options():
@@ -22,105 +23,145 @@ def _ensure_session_key(request):
     return request.session.session_key
 
 
-def _get_active_proposal(request):
+def _resolve_invite(token):
+    return get_object_or_404(Invite, token=token, is_active=True)
+
+
+def _get_active_proposal(request, invite):
     session_key = _ensure_session_key(request)
     proposal = (
-        DateProposal.objects.filter(session_key=session_key, completed=False)
+        DateProposal.objects.filter(
+            invite=invite,
+            session_key=session_key,
+            completed=False,
+        )
         .order_by('-created_at')
         .first()
     )
     if proposal:
         return proposal
-    return DateProposal.objects.create(session_key=session_key)
+    return DateProposal.objects.create(session_key=session_key, invite=invite)
+
+
+def _invite_context(request, invite, site):
+    return {
+        'invite': invite,
+        'site': site,
+        'ask_title': invite.ask_title(site),
+        'no_messages': invite.no_runaway_messages(site),
+        'ask_gift_video_type': video_mime_type(site.ask_gift_video),
+    }
+
+
+def home(request):
+    return render(request, 'proposal/home.html')
 
 
 @ensure_csrf_cookie
-def ask(request):
+def ask(request, token):
+    invite = _resolve_invite(token)
     site = SiteContent.load()
-    return render(request, 'proposal/ask.html', {
-        'site': site,
-        'ask_title': site.ask_title_display(),
-        'no_messages': site.no_runaway_messages_list(),
-        'ask_gift_video_type': video_mime_type(site.ask_gift_video),
+    request.session['invite_token'] = token
+    return render(request, 'proposal/ask.html', _invite_context(request, invite, site))
+
+
+def yay(request, token):
+    invite = _resolve_invite(token)
+    proposal = _get_active_proposal(request, invite)
+    proposal.mark_yes()
+    return render(request, 'proposal/yay.html', {
+        'invite': invite,
+        'site': SiteContent.load(),
     })
 
 
-def yay(request):
-    proposal = _get_active_proposal(request)
-    proposal.mark_yes()
-    return render(request, 'proposal/yay.html', {'site': SiteContent.load()})
-
-
 @require_http_methods(['GET', 'POST'])
-def food(request):
+def food(request, token):
+    invite = _resolve_invite(token)
     food_options = _active_food_options()
-    proposal = _get_active_proposal(request)
+    proposal = _get_active_proposal(request, invite)
 
     if request.method == 'POST':
         choice = request.POST.get('food_choice', '')
         food_obj = food_options.filter(slug=choice).first()
         if food_obj:
             proposal.mark_food(food_obj.label)
-            request.session['food_choice'] = choice
-            request.session['proposal_id'] = proposal.id
-            return redirect('schedule')
+            set_invite_session(request, invite, 'food_choice', choice)
+            set_invite_session(request, invite, 'proposal_id', proposal.id)
+            return redirect('invite_schedule', token=token)
 
     return render(request, 'proposal/food.html', {
+        'invite': invite,
         'site': SiteContent.load(),
         'food_options': food_options,
     })
 
 
 @require_http_methods(['GET', 'POST'])
-def schedule(request):
-    if not request.session.get('food_choice'):
-        return redirect('food')
+def schedule(request, token):
+    invite = _resolve_invite(token)
+    if not get_invite_session(request, invite, 'food_choice'):
+        return redirect('invite_food', token=token)
 
     time_slots = _active_time_slots()
-    proposal_id = request.session.get('proposal_id')
-    proposal = DateProposal.objects.filter(id=proposal_id).first() or _get_active_proposal(request)
+    proposal_id = get_invite_session(request, invite, 'proposal_id')
+    proposal = DateProposal.objects.filter(id=proposal_id, invite=invite).first()
+    if not proposal:
+        proposal = _get_active_proposal(request, invite)
 
     if request.method == 'POST':
         date = request.POST.get('date')
         time_slot = request.POST.get('time_slot')
         if date and time_slot:
             proposal.mark_scheduled(date, time_slot)
-            request.session['date'] = date
-            request.session['time_slot'] = time_slot
-            return redirect('final')
+            set_invite_session(request, invite, 'date', date)
+            set_invite_session(request, invite, 'time_slot', time_slot)
+            return redirect('invite_final', token=token)
 
     return render(request, 'proposal/schedule.html', {
+        'invite': invite,
         'site': SiteContent.load(),
         'time_slots': time_slots,
     })
 
 
-def final(request):
-    if not request.session.get('food_choice'):
-        return redirect('food')
+def final(request, token):
+    invite = _resolve_invite(token)
+    if not get_invite_session(request, invite, 'food_choice'):
+        return redirect('invite_food', token=token)
 
     site = SiteContent.load()
-    time_slot = request.session.get('time_slot', '6:00 PM')
+    time_slot = get_invite_session(request, invite, 'time_slot', '6:00 PM')
 
     return render(request, 'proposal/final.html', {
+        'invite': invite,
         'site': site,
-        'food_choice': request.session.get('food_choice', ''),
-        'date': request.session.get('date', ''),
+        'food_choice': get_invite_session(request, invite, 'food_choice', ''),
+        'date': get_invite_session(request, invite, 'date', ''),
         'time_slot': time_slot,
         'final_title': site.final_title_display(time_slot),
+        'final_note': invite.final_note_display(site),
     })
 
 
 @require_POST
 def track_click(request):
+    token = request.session.get('invite_token')
+    if not token:
+        return JsonResponse({'ok': False, 'error': 'no_invite'}, status=400)
+
+    invite = Invite.objects.filter(token=token, is_active=True).first()
+    if not invite:
+        return JsonResponse({'ok': False, 'error': 'invalid_invite'}, status=400)
+
     choice = request.POST.get('choice', '')
     if choice not in (AskClick.YES, AskClick.NO):
         return JsonResponse({'ok': False}, status=400)
 
-    click = AskClick.objects.create(choice=choice)
+    click = AskClick.objects.create(choice=choice, invite=invite)
 
     if choice == AskClick.YES:
-        _get_active_proposal(request).mark_yes()
+        _get_active_proposal(request, invite).mark_yes()
 
     return JsonResponse({'ok': True, 'id': click.id})
 
@@ -132,11 +173,11 @@ def _staff_preview_required(request):
 @login_required(login_url='dashboard_login')
 def preview_ask(request):
     if not _staff_preview_required(request):
-        return redirect('ask')
+        return redirect('home')
     site = SiteContent.load()
     return render(request, 'proposal/ask.html', {
         'site': site,
-        'ask_title': site.ask_title_display(),
+        'ask_title': site.ask_title.replace('{name}', 'Preview'),
         'no_messages': site.no_runaway_messages_list(),
         'ask_gift_video_type': video_mime_type(site.ask_gift_video),
         'is_preview': True,
@@ -146,14 +187,14 @@ def preview_ask(request):
 @login_required(login_url='dashboard_login')
 def preview_yay(request):
     if not _staff_preview_required(request):
-        return redirect('yay')
+        return redirect('home')
     return render(request, 'proposal/yay.html', {'site': SiteContent.load(), 'is_preview': True})
 
 
 @login_required(login_url='dashboard_login')
 def preview_food(request):
     if not _staff_preview_required(request):
-        return redirect('food')
+        return redirect('home')
     return render(request, 'proposal/food.html', {
         'site': SiteContent.load(),
         'food_options': _active_food_options(),
@@ -164,7 +205,7 @@ def preview_food(request):
 @login_required(login_url='dashboard_login')
 def preview_schedule(request):
     if not _staff_preview_required(request):
-        return redirect('schedule')
+        return redirect('home')
     return render(request, 'proposal/schedule.html', {
         'site': SiteContent.load(),
         'time_slots': _active_time_slots(),
@@ -175,7 +216,7 @@ def preview_schedule(request):
 @login_required(login_url='dashboard_login')
 def preview_final(request):
     if not _staff_preview_required(request):
-        return redirect('final')
+        return redirect('home')
     site = SiteContent.load()
     return render(request, 'proposal/final.html', {
         'site': site,
@@ -183,6 +224,7 @@ def preview_final(request):
         'date': '',
         'time_slot': '6:00 PM',
         'final_title': site.final_title_display('6:00 PM'),
+        'final_note': site.final_note,
         'is_preview': True,
     })
 

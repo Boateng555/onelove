@@ -3,11 +3,12 @@ from django.urls import path
 from . import dashboard_views, views
 
 urlpatterns = [
-    path('', views.ask, name='ask'),
-    path('yay/', views.yay, name='yay'),
-    path('food/', views.food, name='food'),
-    path('schedule/', views.schedule, name='schedule'),
-    path('final/', views.final, name='final'),
+    path('', views.home, name='home'),
+    path('for/<slug:token>/', views.ask, name='invite_ask'),
+    path('for/<slug:token>/yay/', views.yay, name='invite_yay'),
+    path('for/<slug:token>/food/', views.food, name='invite_food'),
+    path('for/<slug:token>/schedule/', views.schedule, name='invite_schedule'),
+    path('for/<slug:token>/final/', views.final, name='invite_final'),
     path('api/track-click/', views.track_click, name='track_click'),
     path('preview/ask/', views.preview_ask, name='preview_ask'),
     path('preview/yay/', views.preview_yay, name='preview_yay'),

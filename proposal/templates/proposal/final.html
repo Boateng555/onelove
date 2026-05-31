@@ -31,7 +31,7 @@
 
     <h1 class="final-title page-enter-delay-1">{{ final_title }}</h1>
 
-    <p class="final-note page-enter-delay-2">{{ site.final_note }}</p>
+    <p class="final-note page-enter-delay-2">{% if final_note %}{{ final_note }}{% else %}{{ site.final_note }}{% endif %}</p>
 
     {% if site.has_final_video or site.final_video_poster %}
     <div class="video-wrap has-video page-enter-delay-3">

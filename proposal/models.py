@@ -1,5 +1,8 @@
 from django.db import models
+from django.urls import reverse
 from django.utils import timezone
+
+from .invite_utils import format_name_line, generate_invite_token
 
 
 class StoredMedia(models.Model):
@@ -129,6 +132,66 @@ class SiteContent(models.Model):
         return bool(self.ask_gift_video)
 
 
+class Invite(models.Model):
+    """Private link for one person — their own name, note, and tracked journey."""
+
+    token = models.CharField(max_length=32, unique=True, db_index=True)
+    name = models.CharField(max_length=80)
+    personal_note = models.TextField(
+        blank=True,
+        default='',
+        help_text='Optional P.S. just for this person. Leave blank to use the default final note.',
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            self.token = generate_invite_token()
+        super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        return reverse('invite_ask', kwargs={'token': self.token})
+
+    def ask_title(self, site):
+        name = self.name.strip()
+        title = site.ask_title
+        if name:
+            return title.replace('{name}', name)
+        return title.replace('{name}', '').replace('  ', ' ').strip()
+
+    def no_runaway_messages(self, site):
+        default = 'please {name}...\n{name} wait 🥺\npretty please {name}?\nplease say yes 💗'
+        raw = site.no_runaway_messages.strip() or default
+        name = self.name.strip()
+        return [
+            format_name_line(line.strip(), name)
+            for line in raw.splitlines()
+            if line.strip()
+        ]
+
+    def final_note_display(self, site):
+        return self.personal_note.strip() or site.final_note
+
+    @property
+    def latest_proposal(self):
+        return self.proposals.order_by('-updated_at').first()
+
+    @property
+    def status_label(self):
+        proposal = self.latest_proposal
+        if not proposal:
+            return 'Link not opened yet'
+        return proposal.status_label
+
+
 class FoodOption(models.Model):
     slug = models.SlugField(max_length=50, unique=True)
     label = models.CharField(max_length=50)
@@ -157,6 +220,13 @@ class TimeSlot(models.Model):
 
 
 class DateProposal(models.Model):
+    invite = models.ForeignKey(
+        Invite,
+        on_delete=models.CASCADE,
+        related_name='proposals',
+        null=True,
+        blank=True,
+    )
     session_key = models.CharField(max_length=40, blank=True, db_index=True)
     said_yes = models.BooleanField(default=False)
     said_yes_at = models.DateTimeField(null=True, blank=True)
@@ -209,6 +279,13 @@ class AskClick(models.Model):
     NO = 'no'
     CHOICES = [(YES, 'Yes'), (NO, 'No')]
 
+    invite = models.ForeignKey(
+        Invite,
+        on_delete=models.CASCADE,
+        related_name='clicks',
+        null=True,
+        blank=True,
+    )
     choice = models.CharField(max_length=3, choices=CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
 

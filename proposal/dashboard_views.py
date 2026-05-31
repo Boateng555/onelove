@@ -12,10 +12,11 @@ from .forms import (
     AskPageForm,
     DashboardLoginForm,
     FoodOptionFormSet,
+    InviteForm,
     OtherPagesForm,
     TimeSlotFormSet,
 )
-from .models import AskClick, DateProposal, FoodOption, SiteContent, TimeSlot
+from .models import AskClick, DateProposal, FoodOption, Invite, SiteContent, TimeSlot
 
 
 def staff_required(view):
@@ -92,12 +93,38 @@ def dashboard(request):
             messages.error(request, 'Could not save time slots.')
             active_tab = 'times'
 
-    submissions = DateProposal.objects.exclude(
+        elif section == 'invites':
+            invite_form = InviteForm(request.POST)
+            if invite_form.is_valid():
+                invite_form.save()
+                messages.success(request, f'Private link created for {invite_form.instance.name}!')
+                return redirect('/dashboard/?tab=people#people')
+            messages.error(request, 'Could not create link — check the name.')
+            active_tab = 'people'
+
+        elif section == 'invite_toggle':
+            invite = Invite.objects.filter(pk=request.POST.get('invite_id')).first()
+            if invite:
+                invite.is_active = not invite.is_active
+                invite.save(update_fields=['is_active', 'updated_at'])
+                state = 'enabled' if invite.is_active else 'disabled'
+                messages.success(request, f'Link for {invite.name} {state}.')
+            return redirect('/dashboard/?tab=people#people')
+
+    invite_form = InviteForm()
+    invites = Invite.objects.prefetch_related('proposals', 'clicks').all()
+
+    submissions = DateProposal.objects.select_related('invite').exclude(
         said_yes=False,
         food_choice='',
         completed=False,
     )[:30]
-    preview_messages = site.no_runaway_messages_list()
+    preview_messages = [
+        'please {name}...',
+        '{name} wait 🥺',
+        'pretty please {name}?',
+    ]
+    preview_title = site.ask_title.replace('{name}', 'Name')
 
     return render(request, 'proposal/dashboard/index.html', {
         'site': site,
@@ -105,9 +132,11 @@ def dashboard(request):
         'pages_form': pages_form,
         'food_formset': food_formset,
         'time_formset': time_formset,
+        'invite_form': invite_form,
+        'invites': invites,
         'submissions': submissions,
         'preview_messages': preview_messages,
-        'preview_title': site.ask_title_display(),
+        'preview_title': preview_title,
         'active_tab': active_tab,
         'max_video_mb': getattr(settings, 'MAX_VIDEO_SIZE_MB', 80),
         'max_gift_video_mb': getattr(settings, 'MAX_GIFT_VIDEO_MB', 2),
@@ -116,20 +145,25 @@ def dashboard(request):
 
 
 def _serialize_click(click):
+    name = click.invite.name if click.invite_id else 'Someone'
+    choice_label = 'YES 💗' if click.choice == AskClick.YES else 'NO 🙈'
     return {
         'id': click.id,
         'type': 'click',
         'choice': click.choice,
-        'label': 'YES 💗' if click.choice == AskClick.YES else 'NO 🙈',
+        'person': name,
+        'label': f'{name}: {choice_label}',
         'time': timezone.localtime(click.created_at).strftime('%I:%M:%S %p'),
         'iso': click.created_at.isoformat(),
     }
 
 
 def _serialize_proposal(proposal):
+    name = proposal.invite.name if proposal.invite_id else 'Someone'
     return {
         'id': proposal.id,
         'type': 'proposal',
+        'person': name,
         'status': proposal.status_label,
         'completed': proposal.completed,
         'said_yes': proposal.said_yes,
@@ -148,13 +182,14 @@ def _serialize_proposal(proposal):
 
 
 def _proposal_feed_label(proposal):
+    name = proposal.invite.name if proposal.invite_id else 'Someone'
     if proposal.completed:
-        return f"Scheduled! {proposal.food_choice} · {proposal.date} · {proposal.time_slot}"
+        return f'{name}: Scheduled! {proposal.food_choice} · {proposal.date} · {proposal.time_slot}'
     if proposal.food_choice:
-        return f"Picked {proposal.food_choice} 🍽️"
+        return f'{name}: Picked {proposal.food_choice} 🍽️'
     if proposal.said_yes:
-        return 'She said YES 💗'
-    return 'New visit'
+        return f'{name}: Said YES 💗'
+    return f'{name}: Opened link'
 
 
 @login_required(login_url='dashboard_login')
@@ -176,7 +211,7 @@ def live_activity(request):
     if parsed_since and timezone.is_naive(parsed_since):
         parsed_since = timezone.make_aware(parsed_since, timezone.get_current_timezone())
 
-    proposal_filter = DateProposal.objects.exclude(
+    proposal_filter = DateProposal.objects.select_related('invite').exclude(
         said_yes=False,
         food_choice='',
         completed=False,
@@ -198,8 +233,8 @@ def live_activity(request):
     yes_today = AskClick.objects.filter(choice=AskClick.YES, created_at__date=today).count()
     no_today = AskClick.objects.filter(choice=AskClick.NO, created_at__date=today).count()
 
-    new_clicks = AskClick.objects.filter(id__gt=since_id).order_by('id')
-    recent_clicks = AskClick.objects.all()[:40]
+    new_clicks = AskClick.objects.select_related('invite').filter(id__gt=since_id).order_by('id')
+    recent_clicks = AskClick.objects.select_related('invite').all()[:40]
     latest_click_id = AskClick.objects.order_by('-id').values_list('id', flat=True).first() or 0
 
     return JsonResponse({

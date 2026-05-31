@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.forms import modelformset_factory
 
 from .media_utils import optimize_uploaded_image, validate_video_upload
-from .models import FoodOption, SiteContent, TimeSlot
+from .models import FoodOption, Invite, SiteContent, TimeSlot
 from .widgets import (
     MobileAnimatedImageInput,
     MobileGiftVideoInput,
@@ -76,7 +76,6 @@ class AskPageForm(MediaOptimizedForm):
     class Meta:
         model = SiteContent
         fields = [
-            'her_name',
             'ask_title',
             'ask_yes_button',
             'ask_no_button',
@@ -85,11 +84,6 @@ class AskPageForm(MediaOptimizedForm):
             'background_image',
         ]
         widgets = {
-            'her_name': forms.TextInput(attrs={
-                'class': 'dash-input',
-                'placeholder': 'Her real name',
-                'id': 'field-her-name',
-            }),
             'ask_title': forms.TextInput(attrs={
                 'class': 'dash-input',
                 'placeholder': '🌸 {name}, will you go on a date with me? 🌸',
@@ -159,6 +153,23 @@ class OtherPagesForm(MediaOptimizedForm):
         if not url.lower().startswith(('http://', 'https://')):
             raise ValidationError('Paste a full link starting with https://')
         return url
+
+
+class InviteForm(forms.ModelForm):
+    class Meta:
+        model = Invite
+        fields = ['name', 'personal_note']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'dash-input',
+                'placeholder': 'Her name',
+            }),
+            'personal_note': forms.Textarea(attrs={
+                'class': 'dash-input dash-textarea',
+                'rows': 3,
+                'placeholder': 'Optional personal P.S. just for her (leave blank for default)',
+            }),
+        }
 
 
 class FoodOptionForm(MediaOptimizedForm):

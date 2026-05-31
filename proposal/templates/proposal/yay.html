@@ -22,6 +22,10 @@
     <h1 class="title title-big">{{ site.yay_title }}</h1>
     <p class="subtitle">{{ site.yay_subtitle }}</p>
 
-    <a href="{% url 'food' %}" class="btn btn-primary btn-full">{{ site.yay_button }}</a>
+    {% if is_preview %}
+    <a href="{% url 'preview_food' %}" class="btn btn-primary btn-full">{{ site.yay_button }}</a>
+    {% else %}
+    <a href="{% url 'invite_food' token=invite.token %}" class="btn btn-primary btn-full">{{ site.yay_button }}</a>
+    {% endif %}
 </div>
 {% endblock %}

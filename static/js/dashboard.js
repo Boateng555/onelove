@@ -53,6 +53,7 @@ function initLiveActivity(apiUrl) {
 
         if (fullRow) {
             tr.innerHTML = `
+                <td><strong>${proposal.person || '—'}</strong></td>
                 <td><span class="dash-badge ${badgeClass(proposal)}">${proposal.status}</span></td>
                 <td>${proposal.food_choice}</td>
                 <td>${proposal.date}</td>
@@ -62,6 +63,7 @@ function initLiveActivity(apiUrl) {
             `;
         } else {
             tr.innerHTML = `
+                <td><strong>${proposal.person || '—'}</strong></td>
                 <td><span class="dash-badge ${badgeClass(proposal)}">${proposal.status}</span></td>
                 <td>${proposal.food_choice}</td>
                 <td>${proposal.date}</td>
@@ -78,7 +80,7 @@ function initLiveActivity(apiUrl) {
             const fullRow = tbody.id === 'responses-body';
 
             if (!proposals.length) {
-                tbody.innerHTML = `<tr><td colspan="${fullRow ? 6 : 5}" class="dash-empty">Waiting for her choices...</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${fullRow ? 7 : 6}" class="dash-empty">Waiting for choices...</td></tr>`;
                 return;
             }
 
@@ -192,10 +194,9 @@ function initLiveActivity(apiUrl) {
 }
 
 /**
- * Live preview on Ask page tab — updates as you type her name & messages.
+ * Live preview on Ask page tab — updates as you type messages.
  */
 function initAskPreview() {
-    const nameInput = document.getElementById('field-her-name');
     const titleInput = document.getElementById('field-ask-title');
     const messagesInput = document.getElementById('field-runaway-messages');
     const yesInput = document.querySelector('[name="ask_yes_button"]');
@@ -206,36 +207,50 @@ function initAskPreview() {
     const previewNo = document.getElementById('preview-no');
     const previewList = document.getElementById('preview-messages');
 
-    if (!nameInput || !previewTitle) return;
+    if (!titleInput || !previewTitle) return;
 
-    function formatLine(line, name) {
-        if (name) return line.replace(/\{name\}/g, name);
-        return line.replace(/\{name\}/g, '').replace(/\s{2,}/g, ' ').replace(' ?', '?').trim();
+    function formatLine(line) {
+        return line.replace(/\{name\}/g, 'Name');
     }
 
     function updatePreview() {
-        const name = nameInput.value.trim();
         const title = titleInput ? titleInput.value : '';
-        if (previewTitle) {
-            previewTitle.textContent = name
-                ? title.replace(/\{name\}/g, name)
-                : title.replace(/\{name\}/g, '').replace(/\s{2,}/g, ' ').trim();
-        }
+        previewTitle.textContent = title.replace(/\{name\}/g, 'Name').replace(/\s{2,}/g, ' ').trim();
         if (previewYes && yesInput) previewYes.textContent = yesInput.value;
         if (previewNo && noInput) previewNo.textContent = noInput.value;
 
         if (previewList && messagesInput) {
             const lines = messagesInput.value.split('\n').map(l => l.trim()).filter(Boolean);
             previewList.innerHTML = lines.length
-                ? lines.map(l => `<li>${formatLine(l, name)}</li>`).join('')
-                : '<li>please...</li>';
+                ? lines.map(l => `<li>${formatLine(l)}</li>`).join('')
+                : '<li>please Name...</li>';
         }
     }
 
-    [nameInput, titleInput, messagesInput, yesInput, noInput].forEach(el => {
+    [titleInput, messagesInput, yesInput, noInput].forEach(el => {
         if (el) el.addEventListener('input', updatePreview);
     });
     updatePreview();
+}
+
+function initCopyInviteLinks() {
+    document.querySelectorAll('.dash-copy-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            const input = document.getElementById(btn.dataset.copy);
+            if (!input) return;
+            input.select();
+            input.setSelectionRange(0, 99999);
+            try {
+                await navigator.clipboard.writeText(input.value);
+                btn.textContent = 'Copied ✓';
+                setTimeout(() => { btn.textContent = 'Copy link'; }, 2000);
+            } catch {
+                document.execCommand('copy');
+                btn.textContent = 'Copied ✓';
+                setTimeout(() => { btn.textContent = 'Copy link'; }, 2000);
+            }
+        });
+    });
 }
 
 /**
