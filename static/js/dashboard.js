@@ -7,6 +7,8 @@ function initLiveActivity(apiUrl, personId) {
     const liveDot = document.getElementById('live-dot');
     const choicesBody = document.getElementById('choices-body');
     const responsesBody = document.getElementById('responses-body');
+    const dashboardEl = document.getElementById('person-dashboard');
+    const scopedPersonId = personId || (dashboardEl && dashboardEl.dataset.personId) || '';
 
     if (!apiUrl) return;
 
@@ -188,9 +190,11 @@ function initLiveActivity(apiUrl, personId) {
     async function poll() {
         try {
             const personSelect = document.getElementById('person-select');
-            const filterId = personId || (personSelect ? personSelect.value : '');
+            const filterId = scopedPersonId || (personSelect ? personSelect.value : '');
+            if (!filterId) return;
+
             let url = `${apiUrl}?since=${sinceClickId}&since_proposal_time=${encodeURIComponent(lastProposalCheck)}`;
-            if (filterId) url += `&person=${encodeURIComponent(filterId)}`;
+            url += `&person=${encodeURIComponent(filterId)}`;
             const res = await fetch(url, { credentials: 'same-origin' });
             if (!res.ok) throw new Error('fetch failed');
 
@@ -218,6 +222,64 @@ function initLiveActivity(apiUrl, personId) {
 
     poll();
     setInterval(poll, 2000);
+}
+
+/**
+ * Clear all live stats, feed, and choices for this person's dashboard.
+ */
+function initClearHistory() {
+    const dashboardEl = document.getElementById('person-dashboard');
+    if (!dashboardEl) return;
+
+    const personId = dashboardEl.dataset.personId;
+    if (!personId) return;
+
+    document.querySelectorAll('[data-clear-history]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            const name = btn.dataset.personName || 'her';
+            const ok = confirm(
+                `Clear everything for ${name}?\n\n` +
+                '• Yes/No taps\n' +
+                '• Activity feed\n' +
+                '• Food picks\n' +
+                '• Dates & times\n\n' +
+                'This cannot be undone.'
+            );
+            if (!ok) return;
+
+            btn.disabled = true;
+            btn.textContent = 'Clearing…';
+
+            const csrf =
+                document.getElementById('dash-csrf-token')?.value ||
+                document.querySelector('input[name=csrfmiddlewaretoken]')?.value ||
+                '';
+
+            const body = new URLSearchParams({
+                section: 'clear_activity',
+                csrfmiddlewaretoken: csrf,
+            });
+
+            try {
+                const res = await fetch(`/dashboard/person/${personId}/`, {
+                    method: 'POST',
+                    body,
+                    credentials: 'same-origin',
+                    headers: { 'X-CSRFToken': csrf },
+                });
+                if (res.ok || res.redirected) {
+                    window.location.href = `/dashboard/person/${personId}/?tab=live&cleared=1`;
+                    return;
+                }
+                alert('Could not clear history — try again.');
+            } catch {
+                alert('Could not clear history — check your connection.');
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Clear all history';
+        });
+    });
 }
 
 /**

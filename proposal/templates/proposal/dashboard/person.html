@@ -20,7 +20,7 @@
     </div>
 </header>
 
-<main class="dash-main">
+<main class="dash-main" id="person-dashboard" data-person-id="{{ invite.id }}">
     {% if messages %}
     <div class="dash-messages">
         {% for message in messages %}
@@ -28,6 +28,8 @@
         {% endfor %}
     </div>
     {% endif %}
+
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}" id="dash-csrf-token">
 
     <div class="dash-person-bar dash-person-bar-full">
         <div class="dash-person-link-block">
@@ -83,15 +85,12 @@
                 </div>
                 <div class="dash-live-header-actions">
                     <span class="dash-live-updated" id="live-updated">Connecting...</span>
-                    <form
-                        method="post"
-                        class="dash-clear-activity-form"
-                        onsubmit="return confirm('Clear everything for {{ invite.name|escapejs }}?\n\n• Yes/No taps\n• Activity feed\n• Food picks\n• Dates & times\n\nThis cannot be undone.');"
-                    >
-                        {% csrf_token %}
-                        <input type="hidden" name="section" value="clear_activity">
-                        <button type="submit" class="dash-btn dash-btn-ghost dash-btn-danger">Clear all history</button>
-                    </form>
+                    <button
+                        type="button"
+                        class="dash-btn dash-btn-ghost dash-btn-danger"
+                        data-clear-history
+                        data-person-name="{{ invite.name|escapejs }}"
+                    >Clear all history</button>
                 </div>
             </div>
 
@@ -441,15 +440,12 @@
                     <h2 class="dash-section-title">{{ invite.name }}'s choices</h2>
                     <p class="dash-hint-block">Updates when she says yes, picks food, and sets the date.</p>
                 </div>
-                <form
-                    method="post"
-                    class="dash-clear-activity-form"
-                    onsubmit="return confirm('Clear everything for {{ invite.name|escapejs }}?\n\n• Yes/No taps\n• Activity feed\n• Food picks\n• Dates & times\n\nThis cannot be undone.');"
-                >
-                    {% csrf_token %}
-                    <input type="hidden" name="section" value="clear_activity">
-                    <button type="submit" class="dash-btn dash-btn-ghost dash-btn-danger">Clear all history</button>
-                </form>
+                <button
+                    type="button"
+                    class="dash-btn dash-btn-ghost dash-btn-danger"
+                    data-clear-history
+                    data-person-name="{{ invite.name|escapejs }}"
+                >Clear all history</button>
             </div>
             {% if submissions %}
             <div class="dash-table-wrap">
@@ -505,9 +501,10 @@ document.querySelectorAll('.dash-tab').forEach(tab => {
 
 activateTab('{{ active_tab|default:"ask" }}');
 </script>
-<script src="{% static 'js/dashboard.js' %}"></script>
+<script src="{% static 'js/dashboard.js' %}?v=4"></script>
 <script>
     initLiveActivity('{% url "live_activity" %}', '{{ invite.id }}');
+    initClearHistory();
     initAskPreview('{{ invite.name|escapejs }}');
     initCopyInviteLinks();
     initVideoUploadLimit({{ max_video_mb }});

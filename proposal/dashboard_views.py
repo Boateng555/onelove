@@ -207,6 +207,9 @@ def person_dashboard(request, invite_id):
         elif section == 'clear_activity':
             AskClick.objects.filter(invite=invite).delete()
             DateProposal.objects.filter(invite=invite).delete()
+            # Legacy rows from before per-person tracking — they show as "Someone"
+            AskClick.objects.filter(invite__isnull=True).delete()
+            DateProposal.objects.filter(invite__isnull=True).delete()
             messages.success(
                 request,
                 f'Everything reset for {invite.name} — all stats and history are at 0.',
@@ -297,6 +300,9 @@ def live_activity(request):
     if invite:
         proposal_filter = proposal_filter.filter(invite=invite)
         click_filter = click_filter.filter(invite=invite)
+    else:
+        proposal_filter = proposal_filter.none()
+        click_filter = click_filter.none()
 
     proposals = proposal_filter[:30]
 
