@@ -209,7 +209,7 @@ def person_dashboard(request, invite_id):
             DateProposal.objects.filter(invite=invite).delete()
             messages.success(
                 request,
-                f'Cleared all activity, choices, and schedules for {invite.name}.',
+                f'Everything reset for {invite.name} — all stats and history are at 0.',
             )
             return redirect(_person_dash_url(invite, 'live', '&cleared=1'))
 

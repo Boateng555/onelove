@@ -33,6 +33,11 @@ function initLiveActivity(apiUrl, personId) {
             const cols = tbody.id === 'responses-body' ? 6 : 5;
             tbody.innerHTML = `<tr><td colspan="${cols}" class="dash-empty">Waiting for choices...</td></tr>`;
         });
+        const statusBadge = document.getElementById('invite-status-badge');
+        if (statusBadge) {
+            statusBadge.textContent = 'Page not opened yet';
+            statusBadge.className = 'dash-badge';
+        }
     }
 
     if (new URLSearchParams(window.location.search).get('cleared') === '1') {
@@ -100,40 +105,57 @@ function initLiveActivity(apiUrl, personId) {
         return tr;
     }
 
-    function refreshChoicesTable(proposals, newProposals) {
+    function rebuildChoicesTable(proposals) {
         [choicesBody, responsesBody].forEach((tbody) => {
             if (!tbody) return;
             const fullRow = tbody.id === 'responses-body';
+            const cols = fullRow ? 6 : 5;
 
             if (!proposals.length) {
-                const cols = fullRow ? 6 : 5;
                 tbody.innerHTML = `<tr><td colspan="${cols}" class="dash-empty">Waiting for choices...</td></tr>`;
                 return;
             }
 
-            if (tbody.querySelector('.dash-empty')) {
-                tbody.innerHTML = '';
-            }
-
-            const newIds = new Set(newProposals.map(p => String(p.id)));
-
+            tbody.innerHTML = '';
             proposals.forEach((proposal) => {
-                let row = tbody.querySelector(`tr[data-proposal-id="${proposal.id}"]`);
-                const isNew = newIds.has(String(proposal.id));
-                if (row) {
-                    row.replaceWith(renderProposalRow(proposal, isNew, fullRow));
-                } else {
-                    tbody.prepend(renderProposalRow(proposal, isNew, fullRow));
-                }
-            });
-
-            const liveIds = new Set(proposals.map(p => String(p.id)));
-            tbody.querySelectorAll('tr[data-proposal-id]').forEach((row) => {
-                if (!liveIds.has(row.dataset.proposalId)) {
-                    row.remove();
-                }
+                tbody.appendChild(renderProposalRow(proposal, false, fullRow));
             });
         });
+    }
+
+    function rebuildFeed(clicks, proposals) {
+        if (!feed) return;
+
+        const combined = [
+            ...clicks.map((click) => ({
+                iso: click.iso,
+                render: () => renderClickEvent(click, false),
+            })),
+            ...proposals.map((proposal) => ({
+                iso: proposal.iso,
+                render: () => renderProposalEvent(proposal, false),
+            })),
+        ].sort((a, b) => new Date(b.iso) - new Date(a.iso));
+
+        feed.innerHTML = '';
+        knownFeedKeys.clear();
+
+        if (!combined.length) {
+            feed.innerHTML = '<li class="dash-live-empty">Waiting for activity...</li>';
+            return;
+        }
+
+        combined.slice(0, 60).forEach(({ render }) => {
+            feed.appendChild(render());
+        });
+    }
+
+    function refreshChoicesTable(proposals, newProposals) {
+        rebuildChoicesTable(proposals);
+    }
+
+    function refreshFeed(clicks, newClicks, newProposals) {
+        rebuildFeed(clicks, newProposals);
     }
 
     function renderClickEvent(event, isNew) {
@@ -163,38 +185,6 @@ function initLiveActivity(apiUrl, personId) {
         return li;
     }
 
-    function refreshFeed(clicks, newClicks, newProposals) {
-        if (!feed) return;
-
-        const hasActivity = clicks.length || newProposals.length;
-        if (!hasActivity && !feed.children.length) {
-            feed.innerHTML = '<li class="dash-live-empty">Waiting for activity...</li>';
-            return;
-        }
-
-        if (feed.querySelector('.dash-live-empty')) {
-            feed.innerHTML = '';
-        }
-
-        newProposals.forEach((proposal) => {
-            const key = 'proposal-' + proposal.id + '-' + proposal.iso;
-            if (knownFeedKeys.has(key)) return;
-            knownFeedKeys.add(key);
-            feed.prepend(renderProposalEvent(proposal, true));
-        });
-
-        newClicks.forEach((event) => {
-            const key = 'click-' + event.id;
-            if (knownFeedKeys.has(key)) return;
-            knownFeedKeys.add(key);
-            feed.prepend(renderClickEvent(event, true));
-        });
-
-        while (feed.children.length > 60) {
-            feed.removeChild(feed.lastChild);
-        }
-    }
-
     async function poll() {
         try {
             const personSelect = document.getElementById('person-select');
@@ -206,7 +196,7 @@ function initLiveActivity(apiUrl, personId) {
 
             const data = await res.json();
             updateStats(data.stats);
-            refreshFeed(data.events, data.new_events, data.new_proposals || []);
+            refreshFeed(data.events, data.new_events, data.proposals || []);
             refreshChoicesTable(data.proposals || [], data.new_proposals || []);
 
             if (data.latest_id > sinceClickId) sinceClickId = data.latest_id;

@@ -45,7 +45,7 @@
             </div>
         </div>
         <div class="dash-person-meta">
-            <span class="dash-badge {% if invite.latest_proposal.completed %}dash-badge-done{% elif invite.latest_proposal %}dash-badge-yes{% endif %}">
+            <span id="invite-status-badge" class="dash-badge {% if invite.latest_proposal.completed %}dash-badge-done{% elif invite.latest_proposal %}dash-badge-yes{% endif %}">
                 {{ invite.status_label }}
             </span>
             <form method="post" class="dash-invite-toggle-inline">
