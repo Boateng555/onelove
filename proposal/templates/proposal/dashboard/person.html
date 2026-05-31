@@ -81,7 +81,18 @@
                     <span class="dash-live-dot" id="live-dot"></span>
                     <span class="dash-live-label">Live — {{ invite.name }}</span>
                 </div>
-                <span class="dash-live-updated" id="live-updated">Connecting...</span>
+                <div class="dash-live-header-actions">
+                    <span class="dash-live-updated" id="live-updated">Connecting...</span>
+                    <form
+                        method="post"
+                        class="dash-clear-activity-form"
+                        onsubmit="return confirm('Clear all yes/no taps and choices for {{ invite.name|escapejs }}? This cannot be undone.');"
+                    >
+                        {% csrf_token %}
+                        <input type="hidden" name="section" value="clear_activity">
+                        <button type="submit" class="dash-btn dash-btn-ghost dash-btn-danger">Clear all activity</button>
+                    </form>
+                </div>
             </div>
 
             <div class="dash-live-stats">

@@ -204,6 +204,15 @@ def person_dashboard(request, invite_id):
             messages.error(request, 'Could not save time slots.')
             active_tab = 'times'
 
+        elif section == 'clear_activity':
+            AskClick.objects.filter(invite=invite).delete()
+            DateProposal.objects.filter(invite=invite).delete()
+            messages.success(
+                request,
+                f'All activity cleared for {invite.name}. Stats and feed are fresh.',
+            )
+            return redirect(_person_dash_url(invite, 'live', '&cleared=1'))
+
     ctx['active_tab'] = active_tab
     ctx['is_new'] = request.GET.get('new') == '1'
     return render(request, 'proposal/dashboard/person.html', ctx)

@@ -434,6 +434,31 @@
     padding: 0.4rem 0.75rem;
 }
 
+.dash-btn-danger {
+    color: #b42318;
+    border: 1px solid rgba(180, 35, 24, 0.25);
+}
+
+.dash-btn-danger:hover {
+    background: rgba(180, 35, 24, 0.06);
+}
+
+.dash-clear-activity-form {
+    display: inline;
+}
+
+.dash-live-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
+.dash-live-updated {
+    font-size: 0.78rem;
+    color: var(--dash-muted);
+}
+
 .dash-btn-full { width: 100%; }
 
 .dash-form .dash-field { margin-bottom: 0.15rem; }
