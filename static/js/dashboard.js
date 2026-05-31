@@ -237,3 +237,37 @@ function initAskPreview() {
     });
     updatePreview();
 }
+
+/**
+ * Block oversized phone videos before upload — Vercel rejects large files silently.
+ */
+function initVideoUploadLimit(maxMb) {
+    const limitBytes = Math.max(1, maxMb) * 1024 * 1024;
+    const safeBytes = Math.floor(limitBytes * 0.9);
+
+    document.querySelectorAll('input[type="file"][accept*="video"]').forEach((input) => {
+        input.addEventListener('change', () => {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            if (file.size > safeBytes) {
+                const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+                alert(
+                    `That video is ${sizeMb}MB — too big (max ${maxMb}MB on Vercel).\n\n` +
+                    'Trim it shorter on your phone, or paste a direct MP4 link in the "Or video link" field instead.'
+                );
+                input.value = '';
+            }
+        });
+    });
+
+    document.querySelectorAll('form.dash-form').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            const videoInput = form.querySelector('input[type="file"][accept*="video"]');
+            const file = videoInput && videoInput.files && videoInput.files[0];
+            if (file && file.size > safeBytes) {
+                event.preventDefault();
+                alert(`Video is too large. Max ${maxMb}MB — trim it or use a video link instead.`);
+            }
+        });
+    });
+}

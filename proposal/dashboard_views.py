@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -108,6 +109,8 @@ def dashboard(request):
         'preview_messages': preview_messages,
         'preview_title': site.ask_title_display(),
         'active_tab': active_tab,
+        'max_video_mb': getattr(settings, 'MAX_VIDEO_SIZE_MB', 80),
+        'is_vercel': settings.IS_VERCEL,
     })
 
 

@@ -33,17 +33,17 @@
 
     <p class="final-note page-enter-delay-2">{{ site.final_note }}</p>
 
-    {% if site.final_video or site.final_video_poster %}
+    {% if site.has_final_video or site.final_video_poster %}
     <div class="video-wrap has-video page-enter-delay-3">
         {% if site.final_video_poster %}
         <img
             src="{{ site.final_video_poster.url }}"
             alt=""
-            class="final-video-poster{% if not site.final_video %} final-video-poster-only{% endif %}"
+            class="final-video-poster{% if not site.has_final_video %} final-video-poster-only{% endif %}"
             id="video-poster"
         >
         {% endif %}
-        {% if site.final_video %}
+        {% if site.has_final_video %}
         <video
             class="final-video"
             id="final-video"
@@ -53,7 +53,7 @@
             {% if site.final_video_poster %}poster="{{ site.final_video_poster.url }}"{% endif %}
             preload="metadata"
         >
-            <source src="{{ site.final_video.url }}" type="{{ final_video_type }}">
+            <source src="{{ site.final_video_source }}" type="{{ final_video_type }}">
         </video>
         {% endif %}
     </div>
@@ -62,7 +62,7 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if site.final_video %}
+{% if site.has_final_video %}
 <script>
     initFinalVideo();
 </script>

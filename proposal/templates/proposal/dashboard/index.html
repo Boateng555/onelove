@@ -266,8 +266,21 @@
                     </div>
                     <div class="dash-field dash-field-full">
                         <label>Video (mp4)</label>
-                        {% if site.final_video %}<p class="dash-hint">Current: {{ site.final_video.name }}</p>{% endif %}
+                        {% if site.final_video %}<p class="dash-hint">Saved file: {{ site.final_video.name }}</p>{% endif %}
+                        {% if site.final_video_url %}<p class="dash-hint">Saved link: {{ site.final_video_url }}</p>{% endif %}
                         {{ pages_form.final_video }}
+                        {% if pages_form.final_video.errors %}<p class="dash-field-error">{{ pages_form.final_video.errors.0 }}</p>{% endif %}
+                        {% if is_vercel %}
+                        <p class="dash-hint-block">
+                            Phone videos are usually too big for Vercel (max {{ max_video_mb }}MB).
+                            Trim the clip on your phone, or paste a direct MP4 link below.
+                        </p>
+                        {% endif %}
+                    </div>
+                    <div class="dash-field dash-field-full">
+                        <label>Or video link <span class="dash-hint">direct https://…mp4 link</span></label>
+                        {{ pages_form.final_video_url }}
+                        {% if pages_form.final_video_url.errors %}<p class="dash-field-error">{{ pages_form.final_video_url.errors.0 }}</p>{% endif %}
                     </div>
                     <div class="dash-field dash-field-full">
                         <label>Video poster image <span class="dash-hint">shows before video plays</span></label>
@@ -431,5 +444,6 @@ activateTab(hash || defaultTab);
 <script>
     initLiveActivity('{% url "live_activity" %}');
     initAskPreview();
+    initVideoUploadLimit({{ max_video_mb }});
 </script>
 {% endblock %}

@@ -108,7 +108,8 @@ class OtherPagesForm(MediaOptimizedForm):
             'yay_title', 'yay_subtitle', 'yay_button', 'yay_image',
             'food_title', 'food_button',
             'schedule_title', 'schedule_date_label', 'schedule_time_label', 'schedule_button',
-            'final_title', 'final_note', 'final_profile_image', 'final_video', 'final_video_poster',
+            'final_title', 'final_note', 'final_profile_image', 'final_video', 'final_video_url',
+            'final_video_poster',
         ]
         widgets = {
             'yay_title': forms.TextInput(attrs={'class': 'dash-input'}),
@@ -125,8 +126,20 @@ class OtherPagesForm(MediaOptimizedForm):
             'final_note': forms.Textarea(attrs={'class': 'dash-input dash-textarea', 'rows': 3}),
             'final_profile_image': MobileAnimatedImageInput(),
             'final_video': MobileVideoInput(),
+            'final_video_url': forms.URLInput(attrs={
+                'class': 'dash-input',
+                'placeholder': 'https://example.com/your-video.mp4',
+            }),
             'final_video_poster': MobileImageInput(),
         }
+
+    def clean_final_video_url(self):
+        url = (self.cleaned_data.get('final_video_url') or '').strip()
+        if not url:
+            return ''
+        if not url.lower().startswith(('http://', 'https://')):
+            raise ValidationError('Paste a full link starting with https://')
+        return url
 
 
 class FoodOptionForm(MediaOptimizedForm):

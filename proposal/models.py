@@ -62,6 +62,11 @@ class SiteContent(models.Model):
     )
     final_profile_image = models.ImageField(upload_to='site/', blank=True, null=True)
     final_video = models.FileField(upload_to='site/videos/', blank=True, null=True)
+    final_video_url = models.URLField(
+        blank=True,
+        default='',
+        help_text='Optional direct MP4 link if the file is too large to upload on Vercel.',
+    )
     final_video_poster = models.ImageField(upload_to='site/', blank=True, null=True)
 
     class Meta:
@@ -102,6 +107,14 @@ class SiteContent(models.Model):
             for line in raw.splitlines()
             if line.strip()
         ]
+
+    def final_video_source(self):
+        if self.final_video:
+            return self.final_video.url
+        return self.final_video_url.strip()
+
+    def has_final_video(self):
+        return bool(self.final_video or self.final_video_url.strip())
 
 
 class FoodOption(models.Model):

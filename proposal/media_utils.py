@@ -151,8 +151,11 @@ def validate_video_upload(file_obj, max_mb=80):
     return file_obj
 
 
-def video_mime_type(file_field) -> str:
-    if not file_field or not file_field.name:
-        return 'video/mp4'
-    ext = Path(file_field.name).suffix.lower()
-    return VIDEO_MIME_TYPES.get(ext, 'video/mp4')
+def video_mime_type(file_field, url='') -> str:
+    if file_field and file_field.name:
+        ext = Path(file_field.name).suffix.lower()
+        return VIDEO_MIME_TYPES.get(ext, 'video/mp4')
+    if url:
+        ext = Path(url.split('?')[0]).suffix.lower()
+        return VIDEO_MIME_TYPES.get(ext, 'video/mp4')
+    return 'video/mp4'
