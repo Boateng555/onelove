@@ -96,9 +96,12 @@ def dashboard(request):
         elif section == 'invites':
             invite_form = InviteForm(request.POST)
             if invite_form.is_valid():
-                invite_form.save()
-                messages.success(request, f'Private link created for {invite_form.instance.name}!')
-                return redirect('/dashboard/?tab=people#people')
+                invite = invite_form.save()
+                messages.success(
+                    request,
+                    f'Private page ready for {invite.name}! Copy her link below and send it only to her.',
+                )
+                return redirect(f'/dashboard/?tab=people&new={invite.id}#people')
             messages.error(request, 'Could not create link — check the name.')
             active_tab = 'people'
 
@@ -141,6 +144,7 @@ def dashboard(request):
         'max_video_mb': getattr(settings, 'MAX_VIDEO_SIZE_MB', 80),
         'max_gift_video_mb': getattr(settings, 'MAX_GIFT_VIDEO_MB', 2),
         'is_vercel': settings.IS_VERCEL,
+        'new_invite_id': request.GET.get('new', ''),
     })
 
 

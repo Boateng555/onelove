@@ -158,16 +158,20 @@ class OtherPagesForm(MediaOptimizedForm):
 class InviteForm(forms.ModelForm):
     class Meta:
         model = Invite
-        fields = ['name', 'personal_note']
+        fields = ['name', 'personal_ask_title', 'personal_note']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'dash-input',
                 'placeholder': 'Her name',
             }),
+            'personal_ask_title': forms.TextInput(attrs={
+                'class': 'dash-input',
+                'placeholder': 'Optional: 🌸 {name}, will you go on a date with me? 🌸',
+            }),
             'personal_note': forms.Textarea(attrs={
                 'class': 'dash-input dash-textarea',
                 'rows': 3,
-                'placeholder': 'Optional personal P.S. just for her (leave blank for default)',
+                'placeholder': 'Optional personal P.S. just for her (final page)',
             }),
         }
 

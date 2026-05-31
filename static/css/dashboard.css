@@ -776,6 +776,17 @@
     opacity: 0.65;
 }
 
+.dash-invite-new {
+    border-color: var(--dash-pink);
+    box-shadow: 0 0 0 3px rgba(244, 160, 181, 0.35);
+    animation: invitePulse 2s ease-in-out 3;
+}
+
+@keyframes invitePulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(244, 160, 181, 0.35); }
+    50% { box-shadow: 0 0 0 6px rgba(244, 160, 181, 0.2); }
+}
+
 .dash-invite-head {
     display: flex;
     align-items: center;

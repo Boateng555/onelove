@@ -27,7 +27,7 @@
     {% endif %}
 
     <nav class="dash-tabs" role="tablist">
-        <button type="button" class="dash-tab" data-tab="people">People & links 💌</button>
+        <button type="button" class="dash-tab" data-tab="people">New private pages 💌</button>
         <button type="button" class="dash-tab" data-tab="live">Live activity</button>
         <button type="button" class="dash-tab" data-tab="ask">Ask page 💗</button>
         <button type="button" class="dash-tab" data-tab="pages">Other pages</button>
@@ -36,12 +36,12 @@
         <button type="button" class="dash-tab" data-tab="responses">Schedule & choices</button>
     </nav>
 
-    <!-- People & private links -->
+    <!-- One private page per person -->
     <section class="dash-panel" id="panel-people">
         <div class="dash-section dash-section-highlight">
-            <h2 class="dash-section-title">Create a private link</h2>
+            <h2 class="dash-section-title">Create a new private page</h2>
             <p class="dash-hint-block">
-                Each person gets their own link with their name. Send it only to them — nobody else can see their messages or choices.
+                Every person gets <strong>their own page</strong> with a unique link. Nobody else can open it or see their Yes/No, food pick, or date.
             </p>
             <form method="post" class="dash-form">
                 {% csrf_token %}
@@ -53,22 +53,29 @@
                         {% if invite_form.name.errors %}<p class="dash-field-error">{{ invite_form.name.errors.0 }}</p>{% endif %}
                     </div>
                     <div class="dash-field dash-field-full">
-                        <label>Personal P.S. <span class="dash-hint">optional — only on her final page</span></label>
+                        <label>Her question <span class="dash-hint">optional — only for her page · use {name}</span></label>
+                        {{ invite_form.personal_ask_title }}
+                    </div>
+                    <div class="dash-field dash-field-full">
+                        <label>Her personal P.S. <span class="dash-hint">optional — final page only</span></label>
                         {{ invite_form.personal_note }}
                     </div>
                 </div>
-                <button type="submit" class="dash-btn dash-btn-primary">Create private link</button>
+                <button type="submit" class="dash-btn dash-btn-primary">Create her private page</button>
             </form>
         </div>
 
         <div class="dash-section">
-            <h2 class="dash-section-title">Your links</h2>
+            <h2 class="dash-section-title">All private pages</h2>
             {% if invites %}
             <ul class="dash-invite-list">
                 {% for invite in invites %}
-                <li class="dash-invite-card{% if not invite.is_active %} dash-invite-off{% endif %}">
+                <li class="dash-invite-card{% if not invite.is_active %} dash-invite-off{% endif %}{% if new_invite_id == invite.id|stringformat:'s' %} dash-invite-new{% endif %}" id="invite-{{ invite.id }}">
                     <div class="dash-invite-head">
-                        <strong>{{ invite.name }}</strong>
+                        <div>
+                            <strong>{{ invite.name }}'s page</strong>
+                            <p class="dash-hint">Only she can open this link</p>
+                        </div>
                         <span class="dash-badge {% if invite.latest_proposal.completed %}dash-badge-done{% elif invite.latest_proposal %}dash-badge-yes{% endif %}">
                             {{ invite.status_label }}
                         </span>
@@ -81,10 +88,14 @@
                             value="{{ request.scheme }}://{{ request.get_host }}{% url 'invite_ask' token=invite.token %}"
                             id="invite-link-{{ invite.id }}"
                         >
-                        <button type="button" class="dash-btn dash-btn-ghost dash-copy-btn" data-copy="invite-link-{{ invite.id }}">Copy link</button>
+                        <a href="{% url 'invite_ask' token=invite.token %}" class="dash-btn dash-btn-ghost" target="_blank">Open page ↗</a>
+                        <button type="button" class="dash-btn dash-btn-primary dash-copy-btn" data-copy="invite-link-{{ invite.id }}">Copy link</button>
                     </div>
+                    {% if invite.personal_ask_title %}
+                    <p class="dash-hint">Her question: {{ invite.personal_ask_title|truncatechars:80 }}</p>
+                    {% endif %}
                     {% if invite.personal_note %}
-                    <p class="dash-hint">Personal note: {{ invite.personal_note|truncatechars:80 }}</p>
+                    <p class="dash-hint">Her P.S.: {{ invite.personal_note|truncatechars:80 }}</p>
                     {% endif %}
                     <form method="post" class="dash-invite-actions">
                         {% csrf_token %}
@@ -98,7 +109,7 @@
                 {% endfor %}
             </ul>
             {% else %}
-            <p class="dash-empty">No links yet — create one above and send it to her 💗</p>
+            <p class="dash-empty">No private pages yet — create one above for each person 💗</p>
             {% endif %}
         </div>
     </section>
@@ -172,7 +183,7 @@
 
             <div class="dash-section dash-section-highlight">
                 <h2 class="dash-section-title">Ask page template</h2>
-                <p class="dash-hint-block">Shared design for everyone. Each person's name comes from their private link in <strong>People & links</strong>.</p>
+                <p class="dash-hint-block">Shared design for everyone. Each person’s <strong>name and private page</strong> are set under <strong>New private pages</strong>.</p>
 
                 <div class="dash-grid">
                     <div class="dash-field dash-field-full">
@@ -510,6 +521,12 @@ document.querySelectorAll('.dash-tab').forEach(tab => {
 const defaultTab = '{{ active_tab|default:"people" }}';
 const hash = window.location.hash.replace('#', '');
 activateTab(hash || defaultTab);
+
+const newInviteId = '{{ new_invite_id|default:"" }}';
+if (newInviteId) {
+    const card = document.getElementById('invite-' + newInviteId);
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
 </script>
 <script src="{% static 'js/dashboard.js' %}"></script>
 <script>

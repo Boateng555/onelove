@@ -133,14 +133,20 @@ class SiteContent(models.Model):
 
 
 class Invite(models.Model):
-    """Private link for one person — their own name, note, and tracked journey."""
+    """Private page for one person — own URL, name, messages, and tracked journey."""
 
     token = models.CharField(max_length=32, unique=True, db_index=True)
     name = models.CharField(max_length=80)
+    personal_ask_title = models.CharField(
+        max_length=200,
+        blank=True,
+        default='',
+        help_text='Optional custom question just for this person. Use {name}. Leave blank for the shared template.',
+    )
     personal_note = models.TextField(
         blank=True,
         default='',
-        help_text='Optional P.S. just for this person. Leave blank to use the default final note.',
+        help_text='Optional P.S. just for this person on the final page.',
     )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -161,8 +167,8 @@ class Invite(models.Model):
         return reverse('invite_ask', kwargs={'token': self.token})
 
     def ask_title(self, site):
+        title = self.personal_ask_title.strip() or site.ask_title
         name = self.name.strip()
-        title = site.ask_title
         if name:
             return title.replace('{name}', name)
         return title.replace('{name}', '').replace('  ', ' ').strip()
