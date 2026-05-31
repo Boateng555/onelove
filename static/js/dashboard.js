@@ -14,6 +14,34 @@ function initLiveActivity(apiUrl, personId) {
     let lastProposalCheck = new Date(Date.now() - 60000).toISOString();
     const knownFeedKeys = new Set();
 
+    function resetLiveDisplay() {
+        updateStats({
+            yes_today: 0,
+            no_today: 0,
+            yes_total: 0,
+            no_total: 0,
+            scheduled_total: 0,
+        });
+        if (feed) {
+            feed.innerHTML = '<li class="dash-live-empty">Waiting for activity...</li>';
+        }
+        knownFeedKeys.clear();
+        sinceClickId = 0;
+        lastProposalCheck = new Date().toISOString();
+        [choicesBody, responsesBody].forEach((tbody) => {
+            if (!tbody) return;
+            const cols = tbody.id === 'responses-body' ? 6 : 5;
+            tbody.innerHTML = `<tr><td colspan="${cols}" class="dash-empty">Waiting for choices...</td></tr>`;
+        });
+    }
+
+    if (new URLSearchParams(window.location.search).get('cleared') === '1') {
+        resetLiveDisplay();
+        const cleanUrl = new URL(window.location);
+        cleanUrl.searchParams.delete('cleared');
+        window.history.replaceState({}, '', cleanUrl);
+    }
+
     function timeAgo(iso) {
         const diff = Date.now() - new Date(iso).getTime();
         const secs = Math.floor(diff / 1000);
@@ -96,6 +124,13 @@ function initLiveActivity(apiUrl, personId) {
                     row.replaceWith(renderProposalRow(proposal, isNew, fullRow));
                 } else {
                     tbody.prepend(renderProposalRow(proposal, isNew, fullRow));
+                }
+            });
+
+            const liveIds = new Set(proposals.map(p => String(p.id)));
+            tbody.querySelectorAll('tr[data-proposal-id]').forEach((row) => {
+                if (!liveIds.has(row.dataset.proposalId)) {
+                    row.remove();
                 }
             });
         });

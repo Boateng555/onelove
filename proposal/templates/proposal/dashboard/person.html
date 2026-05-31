@@ -86,11 +86,11 @@
                     <form
                         method="post"
                         class="dash-clear-activity-form"
-                        onsubmit="return confirm('Clear all yes/no taps and choices for {{ invite.name|escapejs }}? This cannot be undone.');"
+                        onsubmit="return confirm('Clear everything for {{ invite.name|escapejs }}?\n\n• Yes/No taps\n• Activity feed\n• Food picks\n• Dates & times\n\nThis cannot be undone.');"
                     >
                         {% csrf_token %}
                         <input type="hidden" name="section" value="clear_activity">
-                        <button type="submit" class="dash-btn dash-btn-ghost dash-btn-danger">Clear all activity</button>
+                        <button type="submit" class="dash-btn dash-btn-ghost dash-btn-danger">Clear all history</button>
                     </form>
                 </div>
             </div>
@@ -125,6 +125,7 @@
             </ul>
 
             <h2 class="dash-section-title dash-section-title-spaced">Her choices & schedule</h2>
+            <p class="dash-hint-block">Food picks and dates she set — cleared when you tap <strong>Clear all history</strong> above.</p>
             <div class="dash-table-wrap">
                 <table class="dash-table" id="choices-table">
                     <thead>
@@ -435,8 +436,21 @@
     <!-- Schedule & choices -->
     <section class="dash-panel" id="panel-responses">
         <div class="dash-section">
-            <h2 class="dash-section-title">{{ invite.name }}'s choices</h2>
-            <p class="dash-hint-block">Updates when she says yes, picks food, and sets the date.</p>
+            <div class="dash-section-head-row">
+                <div>
+                    <h2 class="dash-section-title">{{ invite.name }}'s choices</h2>
+                    <p class="dash-hint-block">Updates when she says yes, picks food, and sets the date.</p>
+                </div>
+                <form
+                    method="post"
+                    class="dash-clear-activity-form"
+                    onsubmit="return confirm('Clear everything for {{ invite.name|escapejs }}?\n\n• Yes/No taps\n• Activity feed\n• Food picks\n• Dates & times\n\nThis cannot be undone.');"
+                >
+                    {% csrf_token %}
+                    <input type="hidden" name="section" value="clear_activity">
+                    <button type="submit" class="dash-btn dash-btn-ghost dash-btn-danger">Clear all history</button>
+                </form>
+            </div>
             {% if submissions %}
             <div class="dash-table-wrap">
                 <table class="dash-table">
@@ -466,6 +480,7 @@
             </div>
             {% else %}
             <p class="dash-empty">No choices yet — share her link and wait! 💗</p>
+            <p class="dash-hint">Use <strong>Clear all history</strong> on the Live tab to wipe old test data and start fresh.</p>
             {% endif %}
         </div>
     </section>
