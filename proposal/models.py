@@ -26,6 +26,12 @@ class SiteContent(models.Model):
     ask_yes_button = models.CharField(max_length=50, default='YES 💗')
     ask_no_button = models.CharField(max_length=50, default='no... 🙈')
     ask_image = models.ImageField(upload_to='site/', blank=True, null=True)
+    ask_gift_video = models.FileField(
+        upload_to='site/gift/',
+        blank=True,
+        null=True,
+        help_text='Tiny looping gift video for the ask card (replaces GIF emoji).',
+    )
     background_image = models.ImageField(
         upload_to='site/backgrounds/',
         blank=True,
@@ -115,6 +121,12 @@ class SiteContent(models.Model):
 
     def has_final_video(self):
         return bool(self.final_video or self.final_video_url.strip())
+
+    def ask_card_video(self):
+        return self.ask_gift_video
+
+    def ask_card_has_video(self):
+        return bool(self.ask_gift_video)
 
 
 class FoodOption(models.Model):

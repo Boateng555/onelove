@@ -126,7 +126,7 @@ def optimize_uploaded_image(file_obj, max_side=1600, quality=82):
     return ContentFile(buffer.read(), name=f'{safe_name}.jpg')
 
 
-def validate_video_upload(file_obj, max_mb=80):
+def validate_video_upload(file_obj, max_mb=80, label='Video'):
     """Accept common phone video formats and enforce a size limit."""
     if not file_obj or not hasattr(file_obj, 'read'):
         return file_obj
@@ -134,7 +134,7 @@ def validate_video_upload(file_obj, max_mb=80):
     ext = Path(getattr(file_obj, 'name', '')).suffix.lower()
     if ext not in ALLOWED_VIDEO_EXTENSIONS:
         allowed = ', '.join(sorted(ALLOWED_VIDEO_EXTENSIONS))
-        raise ValidationError(f'Use a phone video format: {allowed}')
+        raise ValidationError(f'{label}: use {allowed}')
 
     size = getattr(file_obj, 'size', None)
     if size is None:
@@ -145,7 +145,8 @@ def validate_video_upload(file_obj, max_mb=80):
     max_bytes = max_mb * 1024 * 1024
     if size > max_bytes:
         raise ValidationError(
-            f'Video is too large ({size // (1024 * 1024)}MB). Max is {max_mb}MB — trim it or pick a shorter clip.'
+            f'{label} is too large ({size // (1024 * 1024)}MB). Max is {max_mb}MB — '
+            'trim to a short clip or let the dashboard compress it.'
         )
 
     return file_obj

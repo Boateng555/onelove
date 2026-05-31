@@ -110,6 +110,7 @@ def dashboard(request):
         'preview_title': site.ask_title_display(),
         'active_tab': active_tab,
         'max_video_mb': getattr(settings, 'MAX_VIDEO_SIZE_MB', 80),
+        'max_gift_video_mb': getattr(settings, 'MAX_GIFT_VIDEO_MB', 2),
         'is_vercel': settings.IS_VERCEL,
     })
 

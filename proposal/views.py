@@ -4,6 +4,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods, require_POST
 
+from .media_utils import video_mime_type
 from .models import AskClick, DateProposal, FoodOption, SiteContent, TimeSlot
 
 
@@ -40,6 +41,7 @@ def ask(request):
         'site': site,
         'ask_title': site.ask_title_display(),
         'no_messages': site.no_runaway_messages_list(),
+        'ask_gift_video_type': video_mime_type(site.ask_gift_video),
     })
 
 
@@ -136,6 +138,7 @@ def preview_ask(request):
         'site': site,
         'ask_title': site.ask_title_display(),
         'no_messages': site.no_runaway_messages_list(),
+        'ask_gift_video_type': video_mime_type(site.ask_gift_video),
         'is_preview': True,
     })
 

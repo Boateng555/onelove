@@ -239,6 +239,144 @@ function initAskPreview() {
 }
 
 /**
+ * Compress gift-loop videos in the browser so they stay tiny on Vercel.
+ */
+function initGiftVideoCompress(maxMb) {
+    const maxBytes = Math.max(1, maxMb) * 1024 * 1024;
+    const targetBytes = Math.floor(maxBytes * 0.75);
+
+    document.querySelectorAll('input[data-gift-video]').forEach((input) => {
+        input.addEventListener('change', async () => {
+            const file = input.files && input.files[0];
+            if (!file || !file.type.startsWith('video/')) return;
+
+            const wrap = input.closest('.dash-file-wrap');
+            const status = wrap && wrap.querySelector('.dash-gift-compress-status');
+
+            if (file.size <= targetBytes) return;
+
+            if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
+                if (file.size > maxBytes) {
+                    alert(`Gift video is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Trim to a short clip under ${maxMb}MB.`);
+                    input.value = '';
+                }
+                return;
+            }
+
+            if (status) {
+                status.hidden = false;
+                status.textContent = 'Compressing gift video…';
+            }
+
+            try {
+                const compressed = await compressGiftVideoFile(file, { maxBytes: targetBytes });
+                const dt = new DataTransfer();
+                dt.items.add(compressed);
+                input.files = dt.files;
+
+                if (status) {
+                    const kb = Math.round(compressed.size / 1024);
+                    status.textContent = `Compressed to ${kb}KB ✓`;
+                    status.hidden = false;
+                }
+
+                if (compressed.size > maxBytes) {
+                    alert(`Still too large after compress (${(compressed.size / (1024 * 1024)).toFixed(1)}MB). Trim to 3–5 seconds.`);
+                    input.value = '';
+                    if (status) status.hidden = true;
+                }
+            } catch {
+                if (file.size > maxBytes) {
+                    alert(`Could not compress. Trim the clip under ${maxMb}MB.`);
+                    input.value = '';
+                }
+                if (status) status.hidden = true;
+            }
+        });
+    });
+}
+
+function compressGiftVideoFile(file, options = {}) {
+    const maxBytes = options.maxBytes || 1.5 * 1024 * 1024;
+    const maxSide = options.maxSide || 280;
+    const maxDuration = options.maxDuration || 8;
+    const bitrate = options.bitrate || 120000;
+
+    if (file.size <= maxBytes) {
+        return Promise.resolve(file);
+    }
+
+    return new Promise((resolve) => {
+        const video = document.createElement('video');
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = 'auto';
+        const objectUrl = URL.createObjectURL(file);
+
+        const finish = (result) => {
+            URL.revokeObjectURL(objectUrl);
+            resolve(result);
+        };
+
+        video.onloadedmetadata = () => {
+            const duration = Math.min(video.duration || maxDuration, maxDuration);
+            const scale = Math.min(1, maxSide / Math.max(video.videoWidth, video.videoHeight, 1));
+            const w = Math.max(2, Math.round((video.videoWidth * scale) / 2) * 2);
+            const h = Math.max(2, Math.round((video.videoHeight * scale) / 2) * 2);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+
+            const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
+                ? 'video/webm;codecs=vp8'
+                : 'video/webm';
+
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                finish(file);
+                return;
+            }
+
+            const stream = canvas.captureStream(20);
+            const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bitrate });
+            const chunks = [];
+
+            recorder.ondataavailable = (event) => {
+                if (event.data && event.data.size) chunks.push(event.data);
+            };
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const out = new File([blob], 'gift-loop.webm', { type: 'video/webm' });
+                finish(out.size < file.size ? out : file);
+            };
+            recorder.onerror = () => finish(file);
+
+            video.src = objectUrl;
+            video.play().then(() => {
+                recorder.start(120);
+                const start = performance.now();
+
+                const tick = () => {
+                    const elapsed = (performance.now() - start) / 1000;
+                    if (video.ended || video.currentTime >= duration || elapsed >= duration) {
+                        video.pause();
+                        if (recorder.state !== 'inactive') recorder.stop();
+                        return;
+                    }
+                    ctx.drawImage(video, 0, 0, w, h);
+                    requestAnimationFrame(tick);
+                };
+                tick();
+            }).catch(() => finish(file));
+        };
+
+        video.onerror = () => finish(file);
+        video.src = objectUrl;
+    });
+}
+
+/**
  * Block oversized phone videos before upload — Vercel rejects large files silently.
  */
 function initVideoUploadLimit(maxMb) {

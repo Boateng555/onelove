@@ -6,7 +6,12 @@ from django.forms import modelformset_factory
 
 from .media_utils import optimize_uploaded_image, validate_video_upload
 from .models import FoodOption, SiteContent, TimeSlot
-from .widgets import MobileAnimatedImageInput, MobileImageInput, MobileVideoInput
+from .widgets import (
+    MobileAnimatedImageInput,
+    MobileGiftVideoInput,
+    MobileImageInput,
+    MobileVideoInput,
+)
 
 DEFAULT_NO_MESSAGES = (
     'please {name}...\n'
@@ -21,6 +26,7 @@ class MediaOptimizedForm(forms.ModelForm):
 
     image_sizes = {}
     video_fields = []
+    gift_video_fields = []
 
     def clean(self):
         cleaned = super().clean()
@@ -28,12 +34,25 @@ class MediaOptimizedForm(forms.ModelForm):
             return cleaned
 
         max_video_mb = getattr(settings, 'MAX_VIDEO_SIZE_MB', 80)
+        max_gift_mb = getattr(settings, 'MAX_GIFT_VIDEO_MB', 2)
 
         for field_name, max_side in self.image_sizes.items():
             uploaded = cleaned.get(field_name)
             if uploaded:
                 try:
                     cleaned[field_name] = optimize_uploaded_image(uploaded, max_side=max_side)
+                except ValidationError as exc:
+                    self.add_error(field_name, exc)
+
+        for field_name in self.gift_video_fields:
+            uploaded = cleaned.get(field_name)
+            if uploaded:
+                try:
+                    cleaned[field_name] = validate_video_upload(
+                        uploaded,
+                        max_mb=max_gift_mb,
+                        label='Gift video',
+                    )
                 except ValidationError as exc:
                     self.add_error(field_name, exc)
 
@@ -50,9 +69,9 @@ class MediaOptimizedForm(forms.ModelForm):
 
 class AskPageForm(MediaOptimizedForm):
     image_sizes = {
-        'ask_image': 1200,
         'background_image': 1920,
     }
+    gift_video_fields = ['ask_gift_video']
 
     class Meta:
         model = SiteContent
@@ -62,7 +81,7 @@ class AskPageForm(MediaOptimizedForm):
             'ask_yes_button',
             'ask_no_button',
             'no_runaway_messages',
-            'ask_image',
+            'ask_gift_video',
             'background_image',
         ]
         widgets = {
@@ -84,7 +103,7 @@ class AskPageForm(MediaOptimizedForm):
                 'placeholder': DEFAULT_NO_MESSAGES,
                 'id': 'field-runaway-messages',
             }),
-            'ask_image': MobileAnimatedImageInput(),
+            'ask_gift_video': MobileGiftVideoInput(),
             'background_image': MobileImageInput(),
         }
 

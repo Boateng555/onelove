@@ -12,7 +12,18 @@
 {% block content %}
 <div class="card card-ask">
     <div class="media-wrap">
-        {% if site.ask_image %}
+        {% if site.ask_card_has_video %}
+        <video
+            class="media-gift-video"
+            autoplay
+            loop
+            muted
+            playsinline
+            preload="auto"
+        >
+            <source src="{{ site.ask_gift_video.url }}" type="{{ ask_gift_video_type }}">
+        </video>
+        {% elif site.ask_image %}
         <img
             src="{{ site.ask_image.url }}"
             alt=""
@@ -20,7 +31,7 @@
         >
         {% else %}
         <div class="media-placeholder">
-            <span>add photo in dashboard</span>
+            <span>add gift video in dashboard 🎁</span>
         </div>
         {% endif %}
     </div>
