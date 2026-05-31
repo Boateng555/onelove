@@ -1,7 +1,7 @@
 /**
  * Poll live yes/no activity and her choices for the admin dashboard.
  */
-function initLiveActivity(apiUrl) {
+function initLiveActivity(apiUrl, personId) {
     const feed = document.getElementById('live-feed');
     const updatedEl = document.getElementById('live-updated');
     const liveDot = document.getElementById('live-dot');
@@ -53,7 +53,6 @@ function initLiveActivity(apiUrl) {
 
         if (fullRow) {
             tr.innerHTML = `
-                <td><strong>${proposal.person || '—'}</strong></td>
                 <td><span class="dash-badge ${badgeClass(proposal)}">${proposal.status}</span></td>
                 <td>${proposal.food_choice}</td>
                 <td>${proposal.date}</td>
@@ -63,7 +62,6 @@ function initLiveActivity(apiUrl) {
             `;
         } else {
             tr.innerHTML = `
-                <td><strong>${proposal.person || '—'}</strong></td>
                 <td><span class="dash-badge ${badgeClass(proposal)}">${proposal.status}</span></td>
                 <td>${proposal.food_choice}</td>
                 <td>${proposal.date}</td>
@@ -80,7 +78,8 @@ function initLiveActivity(apiUrl) {
             const fullRow = tbody.id === 'responses-body';
 
             if (!proposals.length) {
-                tbody.innerHTML = `<tr><td colspan="${fullRow ? 7 : 6}" class="dash-empty">Waiting for choices...</td></tr>`;
+                const cols = fullRow ? 6 : 5;
+                tbody.innerHTML = `<tr><td colspan="${cols}" class="dash-empty">Waiting for choices...</td></tr>`;
                 return;
             }
 
@@ -163,7 +162,10 @@ function initLiveActivity(apiUrl) {
 
     async function poll() {
         try {
-            const url = `${apiUrl}?since=${sinceClickId}&since_proposal_time=${encodeURIComponent(lastProposalCheck)}`;
+            const personSelect = document.getElementById('person-select');
+            const filterId = personId || (personSelect ? personSelect.value : '');
+            let url = `${apiUrl}?since=${sinceClickId}&since_proposal_time=${encodeURIComponent(lastProposalCheck)}`;
+            if (filterId) url += `&person=${encodeURIComponent(filterId)}`;
             const res = await fetch(url, { credentials: 'same-origin' });
             if (!res.ok) throw new Error('fetch failed');
 
@@ -196,7 +198,7 @@ function initLiveActivity(apiUrl) {
 /**
  * Live preview on Ask page tab — updates as you type messages.
  */
-function initAskPreview() {
+function initAskPreview(personName) {
     const titleInput = document.getElementById('field-ask-title');
     const messagesInput = document.getElementById('field-runaway-messages');
     const yesInput = document.querySelector('[name="ask_yes_button"]');
@@ -209,13 +211,15 @@ function initAskPreview() {
 
     if (!titleInput || !previewTitle) return;
 
+    const displayName = personName || 'Name';
+
     function formatLine(line) {
-        return line.replace(/\{name\}/g, 'Name');
+        return line.replace(/\{name\}/g, displayName);
     }
 
     function updatePreview() {
         const title = titleInput ? titleInput.value : '';
-        previewTitle.textContent = title.replace(/\{name\}/g, 'Name').replace(/\s{2,}/g, ' ').trim();
+        previewTitle.textContent = title.replace(/\{name\}/g, displayName).replace(/\s{2,}/g, ' ').trim();
         if (previewYes && yesInput) previewYes.textContent = yesInput.value;
         if (previewNo && noInput) previewNo.textContent = noInput.value;
 
@@ -223,7 +227,7 @@ function initAskPreview() {
             const lines = messagesInput.value.split('\n').map(l => l.trim()).filter(Boolean);
             previewList.innerHTML = lines.length
                 ? lines.map(l => `<li>${formatLine(l)}</li>`).join('')
-                : '<li>please Name...</li>';
+                : `<li>please ${displayName}...</li>`;
         }
     }
 

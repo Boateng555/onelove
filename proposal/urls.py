@@ -19,4 +19,5 @@ urlpatterns = [
     path('dashboard/logout/', dashboard_views.dashboard_logout, name='dashboard_logout'),
     path('dashboard/api/live/', dashboard_views.live_activity, name='live_activity'),
     path('dashboard/', dashboard_views.dashboard, name='dashboard'),
+    path('dashboard/person/<int:invite_id>/', dashboard_views.person_dashboard, name='dashboard_person'),
 ]

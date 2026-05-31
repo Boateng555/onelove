@@ -6,8 +6,6 @@ from .invite_utils import format_name_line, generate_invite_token
 
 
 class StoredMedia(models.Model):
-    """Optimized uploads kept in Postgres for serverless hosting."""
-
     name = models.CharField(max_length=512, unique=True, db_index=True)
     data = models.BinaryField()
     content_type = models.CharField(max_length=128, default='application/octet-stream')
@@ -23,96 +21,67 @@ class StoredMedia(models.Model):
 
 
 class SiteContent(models.Model):
-    """Single row — all editable page text and media."""
+    """Default template copied when creating a new person's page."""
 
     ask_title = models.CharField(max_length=200, default='🌸 Will you go on a date with me? 🌸')
     ask_yes_button = models.CharField(max_length=50, default='YES 💗')
     ask_no_button = models.CharField(max_length=50, default='no... 🙈')
     ask_image = models.ImageField(upload_to='site/', blank=True, null=True)
-    ask_gift_video = models.FileField(
-        upload_to='site/gift/',
-        blank=True,
-        null=True,
-        help_text='Tiny looping gift video for the ask card (replaces GIF emoji).',
-    )
-    background_image = models.ImageField(
-        upload_to='site/backgrounds/',
-        blank=True,
-        null=True,
-        help_text='Full-page background photo (e.g. a picture of her).',
-    )
-    her_name = models.CharField(max_length=50, blank=True, default='', help_text='Her name — used in messages when the No button runs.')
+    ask_gift_video = models.FileField(upload_to='site/gift/', blank=True, null=True)
+    background_image = models.ImageField(upload_to='site/backgrounds/', blank=True, null=True)
+    her_name = models.CharField(max_length=50, blank=True, default='')
     no_runaway_messages = models.TextField(
         blank=True,
         default='please {name}...\n{name} wait 🥺\npretty please {name}?\nplease {name} say yes 💗',
-        help_text='One message per line. Use {name} for her name — shown when she tries to click No.',
     )
-
     yay_title = models.CharField(max_length=200, default='WAIT YOU ACTUALLY SAID YES?? 😭')
     yay_subtitle = models.CharField(max_length=200, default='I was so ready for you to say no 😂')
     yay_button = models.CharField(max_length=50, default='okay okay! →')
     yay_image = models.ImageField(upload_to='site/', blank=True, null=True)
-
     food_title = models.CharField(max_length=200, default='What are we feeling? 🍜✨')
     food_button = models.CharField(max_length=50, default='this one! →')
-
     schedule_title = models.CharField(max_length=200, default='So... when are you free?')
     schedule_date_label = models.CharField(max_length=100, default='Pick a Day ✨')
     schedule_time_label = models.CharField(max_length=100, default='Pick a Time ✨')
     schedule_button = models.CharField(max_length=50, default='set the date! 💌')
-
     final_title = models.CharField(
         max_length=300,
         default="glad you didn't say no. be ready by {time}, I'm coming to get you 🚗",
-        help_text='Use {time} where the picked time should appear.',
     )
     final_note = models.TextField(
         default='P.S. normal people text. I made a website. during lunch. for you. no big deal.',
     )
     final_profile_image = models.ImageField(upload_to='site/', blank=True, null=True)
     final_video = models.FileField(upload_to='site/videos/', blank=True, null=True)
-    final_video_url = models.URLField(
-        blank=True,
-        default='',
-        help_text='Optional direct MP4 link if the file is too large to upload on Vercel.',
-    )
+    final_video_url = models.URLField(blank=True, default='')
     final_video_poster = models.ImageField(upload_to='site/', blank=True, null=True)
 
     class Meta:
         verbose_name = 'Site content'
         verbose_name_plural = 'Site content'
 
-    def __str__(self):
-        return 'Site content'
-
     @classmethod
     def load(cls):
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
 
+
+class ContentMixin:
+    """Shared page helpers — used by each person's InviteContent."""
+
     def final_title_display(self, time_slot='6:00 PM'):
         return self.final_title.replace('{time}', time_slot)
 
-    def ask_title_display(self):
-        name = self.her_name.strip()
+    def ask_title_display(self, name):
         if name:
             return self.ask_title.replace('{name}', name)
         return self.ask_title.replace('{name}', '').replace('  ', ' ').strip()
 
-    def _format_name_line(self, line, name):
-        if name:
-            return line.replace('{name}', name)
-        cleaned = line.replace('{name}', '')
-        while '  ' in cleaned:
-            cleaned = cleaned.replace('  ', ' ')
-        return cleaned.replace(' ?', '?').replace(' .', '.').strip(' ,.')
-
-    def no_runaway_messages_list(self):
+    def no_runaway_messages_list(self, name):
         default = 'please {name}...\n{name} wait 🥺\npretty please {name}?\nplease say yes 💗'
         raw = self.no_runaway_messages.strip() or default
-        name = self.her_name.strip()
         return [
-            self._format_name_line(line.strip(), name)
+            format_name_line(line.strip(), name)
             for line in raw.splitlines()
             if line.strip()
         ]
@@ -125,29 +94,52 @@ class SiteContent(models.Model):
     def has_final_video(self):
         return bool(self.final_video or self.final_video_url.strip())
 
-    def ask_card_video(self):
-        return self.ask_gift_video
-
     def ask_card_has_video(self):
         return bool(self.ask_gift_video)
 
 
-class Invite(models.Model):
-    """Private page for one person — own URL, name, messages, and tracked journey."""
+class InviteContent(ContentMixin, models.Model):
+    """All page text and media for one person — completely separate from others."""
 
+    invite = models.OneToOneField('Invite', on_delete=models.CASCADE, related_name='content')
+    ask_title = models.CharField(max_length=200, default='🌸 Will you go on a date with me? 🌸')
+    ask_yes_button = models.CharField(max_length=50, default='YES 💗')
+    ask_no_button = models.CharField(max_length=50, default='no... 🙈')
+    ask_gift_video = models.FileField(upload_to='invites/gift/', blank=True, null=True)
+    background_image = models.ImageField(upload_to='invites/backgrounds/', blank=True, null=True)
+    no_runaway_messages = models.TextField(
+        blank=True,
+        default='please {name}...\n{name} wait 🥺\npretty please {name}?\nplease say yes 💗',
+    )
+    yay_title = models.CharField(max_length=200, default='WAIT YOU ACTUALLY SAID YES?? 😭')
+    yay_subtitle = models.CharField(max_length=200, default='I was so ready for you to say no 😂')
+    yay_button = models.CharField(max_length=50, default='okay okay! →')
+    yay_image = models.ImageField(upload_to='invites/yay/', blank=True, null=True)
+    food_title = models.CharField(max_length=200, default='What are we feeling? 🍜✨')
+    food_button = models.CharField(max_length=50, default='this one! →')
+    schedule_title = models.CharField(max_length=200, default='So... when are you free?')
+    schedule_date_label = models.CharField(max_length=100, default='Pick a Day ✨')
+    schedule_time_label = models.CharField(max_length=100, default='Pick a Time ✨')
+    schedule_button = models.CharField(max_length=50, default='set the date! 💌')
+    final_title = models.CharField(
+        max_length=300,
+        default="glad you didn't say no. be ready by {time}, I'm coming to get you 🚗",
+    )
+    final_note = models.TextField(
+        default='P.S. normal people text. I made a website. during lunch. for you. no big deal.',
+    )
+    final_profile_image = models.ImageField(upload_to='invites/profile/', blank=True, null=True)
+    final_video = models.FileField(upload_to='invites/videos/', blank=True, null=True)
+    final_video_url = models.URLField(blank=True, default='')
+    final_video_poster = models.ImageField(upload_to='invites/posters/', blank=True, null=True)
+
+    def __str__(self):
+        return f'Content for {self.invite.name}'
+
+
+class Invite(models.Model):
     token = models.CharField(max_length=32, unique=True, db_index=True)
     name = models.CharField(max_length=80)
-    personal_ask_title = models.CharField(
-        max_length=200,
-        blank=True,
-        default='',
-        help_text='Optional custom question just for this person. Use {name}. Leave blank for the shared template.',
-    )
-    personal_note = models.TextField(
-        blank=True,
-        default='',
-        help_text='Optional P.S. just for this person on the final page.',
-    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -166,26 +158,6 @@ class Invite(models.Model):
     def get_absolute_url(self):
         return reverse('invite_ask', kwargs={'token': self.token})
 
-    def ask_title(self, site):
-        title = self.personal_ask_title.strip() or site.ask_title
-        name = self.name.strip()
-        if name:
-            return title.replace('{name}', name)
-        return title.replace('{name}', '').replace('  ', ' ').strip()
-
-    def no_runaway_messages(self, site):
-        default = 'please {name}...\n{name} wait 🥺\npretty please {name}?\nplease say yes 💗'
-        raw = site.no_runaway_messages.strip() or default
-        name = self.name.strip()
-        return [
-            format_name_line(line.strip(), name)
-            for line in raw.splitlines()
-            if line.strip()
-        ]
-
-    def final_note_display(self, site):
-        return self.personal_note.strip() or site.final_note
-
     @property
     def latest_proposal(self):
         return self.proposals.order_by('-updated_at').first()
@@ -194,26 +166,41 @@ class Invite(models.Model):
     def status_label(self):
         proposal = self.latest_proposal
         if not proposal:
-            return 'Link not opened yet'
+            return 'Page not opened yet'
         return proposal.status_label
 
 
 class FoodOption(models.Model):
-    slug = models.SlugField(max_length=50, unique=True)
+    invite = models.ForeignKey(
+        Invite,
+        on_delete=models.CASCADE,
+        related_name='food_options',
+        null=True,
+        blank=True,
+    )
+    slug = models.SlugField(max_length=50)
     label = models.CharField(max_length=50)
     emoji = models.CharField(max_length=10, blank=True)
-    image = models.ImageField(upload_to='food/', blank=True, null=True)
+    image = models.ImageField(upload_to='invites/food/', blank=True, null=True)
     order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
 
     class Meta:
         ordering = ['order', 'label']
+        unique_together = [['invite', 'slug']]
 
     def __str__(self):
         return self.label
 
 
 class TimeSlot(models.Model):
+    invite = models.ForeignKey(
+        Invite,
+        on_delete=models.CASCADE,
+        related_name='time_slots',
+        null=True,
+        blank=True,
+    )
     label = models.CharField(max_length=50)
     order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
@@ -247,9 +234,6 @@ class DateProposal(models.Model):
 
     class Meta:
         ordering = ['-updated_at']
-
-    def __str__(self):
-        return f"Date on {self.date} — {self.food_choice}"
 
     @property
     def status_label(self):
@@ -297,6 +281,3 @@ class AskClick(models.Model):
 
     class Meta:
         ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.get_choice_display()} at {self.created_at:%Y-%m-%d %H:%M:%S}"

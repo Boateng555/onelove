@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.forms import modelformset_factory
 
 from .media_utils import optimize_uploaded_image, validate_video_upload
-from .models import FoodOption, Invite, SiteContent, TimeSlot
+from .models import FoodOption, Invite, InviteContent, SiteContent, TimeSlot
 from .widgets import (
     MobileAnimatedImageInput,
     MobileGiftVideoInput,
@@ -74,7 +74,7 @@ class AskPageForm(MediaOptimizedForm):
     gift_video_fields = ['ask_gift_video']
 
     class Meta:
-        model = SiteContent
+        model = InviteContent
         fields = [
             'ask_title',
             'ask_yes_button',
@@ -116,7 +116,7 @@ class OtherPagesForm(MediaOptimizedForm):
     video_fields = ['final_video']
 
     class Meta:
-        model = SiteContent
+        model = InviteContent
         fields = [
             'yay_title', 'yay_subtitle', 'yay_button', 'yay_image',
             'food_title', 'food_button',
@@ -158,20 +158,11 @@ class OtherPagesForm(MediaOptimizedForm):
 class InviteForm(forms.ModelForm):
     class Meta:
         model = Invite
-        fields = ['name', 'personal_ask_title', 'personal_note']
+        fields = ['name']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'dash-input',
                 'placeholder': 'Her name',
-            }),
-            'personal_ask_title': forms.TextInput(attrs={
-                'class': 'dash-input',
-                'placeholder': 'Optional: 🌸 {name}, will you go on a date with me? 🌸',
-            }),
-            'personal_note': forms.Textarea(attrs={
-                'class': 'dash-input dash-textarea',
-                'rows': 3,
-                'placeholder': 'Optional personal P.S. just for her (final page)',
             }),
         }
 

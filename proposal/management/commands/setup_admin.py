@@ -3,25 +3,11 @@ import os
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 
-from proposal.models import FoodOption, SiteContent, TimeSlot
-
-DEFAULT_FOODS = [
-    ('pizza', 'Pizza', '🍕', 0),
-    ('sushi', 'Sushi', '🍣', 1),
-    ('burgers', 'Burgers', '🍔', 2),
-    ('pasta', 'Pasta', '🍝', 3),
-    ('tacos', 'Tacos', '🌮', 4),
-    ('ramen', 'Ramen', '🍜', 5),
-]
-
-DEFAULT_TIMES = [
-    '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM',
-    '5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM',
-]
+from proposal.models import SiteContent
 
 
 class Command(BaseCommand):
-    help = 'Create admin user and seed default site content'
+    help = 'Create admin user and seed default template content'
 
     def add_arguments(self, parser):
         parser.add_argument('--username', default=os.environ.get('ADMIN_USERNAME', 'admin'))
@@ -35,16 +21,7 @@ class Command(BaseCommand):
         email = options['email']
 
         SiteContent.load()
-
-        if not FoodOption.objects.exists():
-            for slug, label, emoji, order in DEFAULT_FOODS:
-                FoodOption.objects.create(slug=slug, label=label, emoji=emoji, order=order)
-            self.stdout.write(self.style.SUCCESS('Seeded food options'))
-
-        if not TimeSlot.objects.exists():
-            for i, label in enumerate(DEFAULT_TIMES):
-                TimeSlot.objects.create(label=label, order=i)
-            self.stdout.write(self.style.SUCCESS('Seeded time slots'))
+        self.stdout.write(self.style.SUCCESS('Default template content ready'))
 
         user, created = User.objects.get_or_create(username=username, defaults={'email': email})
         user.is_staff = True

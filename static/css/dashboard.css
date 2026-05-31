@@ -84,6 +84,23 @@
     gap: 0.5rem;
 }
 
+.dash-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.dash-back-link {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--dash-pink-dark, #c9788f);
+    text-decoration: none;
+}
+
+.dash-back-link:hover {
+    text-decoration: underline;
+}
+
 .dash-link {
     color: var(--dash-text);
     font-size: 0.85rem;
@@ -810,4 +827,81 @@
 
 .dash-invite-actions {
     margin-top: 0.5rem;
+}
+
+.dash-person-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+    padding: 1rem 1.1rem;
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid rgba(244, 160, 181, 0.35);
+    box-shadow: 0 2px 12px rgba(244, 160, 181, 0.08);
+}
+
+.dash-person-label {
+    font-weight: 700;
+    font-size: 0.95rem;
+    white-space: nowrap;
+}
+
+.dash-person-select {
+    min-width: 180px;
+    max-width: 240px;
+}
+
+.dash-person-bar-full {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.dash-person-link-block {
+    width: 100%;
+}
+
+.dash-person-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.dash-invite-toggle-inline {
+    display: inline;
+}
+
+.dash-btn-sm {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.82rem;
+}
+
+.dash-welcome-banner {
+    margin-bottom: 1rem;
+}
+
+.dash-invite-clickable {
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.dash-invite-open {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    margin-bottom: 0.75rem;
+}
+
+.dash-invite-open:hover .dash-invite-head strong {
+    color: var(--dash-pink-dark, #c9788f);
+}
+
+.dash-invite-clickable:hover {
+    border-color: var(--dash-pink);
+    box-shadow: 0 4px 16px rgba(244, 160, 181, 0.15);
+}
+
+.dash-invite-preview {
+    margin-top: 0.25rem;
 }

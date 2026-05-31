@@ -1,0 +1,482 @@
+{% extends 'proposal/dashboard/base.html' %}
+{% load static %}
+
+{% block title %}{{ invite.name }}'s Dashboard{% endblock %}
+
+{% block body %}
+<header class="dash-header">
+    <div class="dash-header-inner">
+        <div class="dash-header-left">
+            <a href="{% url 'dashboard' %}" class="dash-back-link">← All pages</a>
+            <h1 class="dash-brand">{{ invite.name }}'s dashboard</h1>
+        </div>
+        <div class="dash-header-actions">
+            <a href="{% url 'preview_ask' %}?person={{ invite.id }}" class="dash-link" target="_blank">Preview her pages ↗</a>
+            <form method="post" action="{% url 'dashboard_logout' %}" class="dash-logout-form">
+                {% csrf_token %}
+                <button type="submit" class="dash-btn dash-btn-ghost">Log out</button>
+            </form>
+        </div>
+    </div>
+</header>
+
+<main class="dash-main">
+    {% if messages %}
+    <div class="dash-messages">
+        {% for message in messages %}
+        <div class="dash-message{% if message.tags %} dash-message-{{ message.tags }}{% endif %}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="dash-person-bar dash-person-bar-full">
+        <div class="dash-person-link-block">
+            <span class="dash-person-label">Her private link</span>
+            <div class="dash-invite-link-row">
+                <input
+                    type="text"
+                    class="dash-input dash-invite-url"
+                    readonly
+                    value="{{ request.scheme }}://{{ request.get_host }}{% url 'invite_ask' token=invite.token %}"
+                    id="invite-link-main"
+                >
+                <a href="{% url 'invite_ask' token=invite.token %}" class="dash-btn dash-btn-ghost" target="_blank">Open ↗</a>
+                <button type="button" class="dash-btn dash-btn-primary dash-copy-btn" data-copy="invite-link-main">Copy link</button>
+            </div>
+        </div>
+        <div class="dash-person-meta">
+            <span class="dash-badge {% if invite.latest_proposal.completed %}dash-badge-done{% elif invite.latest_proposal %}dash-badge-yes{% endif %}">
+                {{ invite.status_label }}
+            </span>
+            <form method="post" class="dash-invite-toggle-inline">
+                {% csrf_token %}
+                <input type="hidden" name="section" value="invite_toggle">
+                <button type="submit" class="dash-btn dash-btn-ghost dash-btn-sm">
+                    {% if invite.is_active %}Disable link{% else %}Enable link{% endif %}
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {% if is_new %}
+    <div class="dash-message dash-message-success dash-welcome-banner">
+        {{ invite.name }}'s dashboard is ready! Customize everything below — only she will see it.
+    </div>
+    {% endif %}
+
+    <nav class="dash-tabs" role="tablist">
+        <button type="button" class="dash-tab" data-tab="live">Live activity</button>
+        <button type="button" class="dash-tab" data-tab="ask">Ask page 💗</button>
+        <button type="button" class="dash-tab" data-tab="pages">Other pages</button>
+        <button type="button" class="dash-tab" data-tab="food">Food options</button>
+        <button type="button" class="dash-tab" data-tab="times">Time slots</button>
+        <button type="button" class="dash-tab" data-tab="responses">Schedule & choices</button>
+    </nav>
+
+    <!-- Live activity -->
+    <section class="dash-panel" id="panel-live">
+        <div class="dash-section dash-live-section">
+            <div class="dash-live-header">
+                <div class="dash-live-status">
+                    <span class="dash-live-dot" id="live-dot"></span>
+                    <span class="dash-live-label">Live — {{ invite.name }}</span>
+                </div>
+                <span class="dash-live-updated" id="live-updated">Connecting...</span>
+            </div>
+
+            <div class="dash-live-stats">
+                <div class="dash-stat dash-stat-yes">
+                    <span class="dash-stat-num" id="stat-yes-today">0</span>
+                    <span class="dash-stat-label">Yes today</span>
+                </div>
+                <div class="dash-stat dash-stat-no">
+                    <span class="dash-stat-num" id="stat-no-today">0</span>
+                    <span class="dash-stat-label">No attempts today</span>
+                </div>
+                <div class="dash-stat">
+                    <span class="dash-stat-num" id="stat-yes-total">0</span>
+                    <span class="dash-stat-label">Yes all time</span>
+                </div>
+                <div class="dash-stat">
+                    <span class="dash-stat-num" id="stat-no-total">0</span>
+                    <span class="dash-stat-label">No all time</span>
+                </div>
+                <div class="dash-stat dash-stat-scheduled">
+                    <span class="dash-stat-num" id="stat-scheduled-total">0</span>
+                    <span class="dash-stat-label">Dates set</span>
+                </div>
+            </div>
+
+            <h2 class="dash-section-title">Activity feed</h2>
+            <p class="dash-hint-block">{{ invite.name }}'s Yes/No taps and choices update live here.</p>
+            <ul class="dash-live-feed" id="live-feed">
+                <li class="dash-live-empty">Waiting for activity...</li>
+            </ul>
+
+            <h2 class="dash-section-title dash-section-title-spaced">Her choices & schedule</h2>
+            <div class="dash-table-wrap">
+                <table class="dash-table" id="choices-table">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Food</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody id="choices-body">
+                        <tr><td colspan="5" class="dash-empty">Waiting for her choices...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Ask page -->
+    <section class="dash-panel" id="panel-ask">
+        <form method="post" enctype="multipart/form-data" class="dash-form" id="ask-form">
+            {% csrf_token %}
+            <input type="hidden" name="section" value="ask">
+
+            <div class="dash-section dash-section-highlight">
+                <h2 class="dash-section-title">{{ invite.name }}'s ask page</h2>
+                <p class="dash-hint-block">Only she sees this when she opens her private link. Use <strong>{name}</strong> for her name.</p>
+
+                <div class="dash-grid">
+                    <div class="dash-field dash-field-full">
+                        <label>Question title <span class="dash-hint">use {name}</span></label>
+                        {{ ask_form.ask_title }}
+                        {% if ask_form.ask_title.errors %}<p class="dash-field-error">{{ ask_form.ask_title.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="dash-field">
+                        <label>Yes button</label>
+                        {{ ask_form.ask_yes_button }}
+                    </div>
+                    <div class="dash-field">
+                        <label>No button</label>
+                        {{ ask_form.ask_no_button }}
+                    </div>
+                    <div class="dash-field dash-field-full">
+                        <label>No runaway messages <span class="dash-hint">one per line · use {name}</span></label>
+                        {{ ask_form.no_runaway_messages }}
+                        {% if ask_form.no_runaway_messages.errors %}<p class="dash-field-error">{{ ask_form.no_runaway_messages.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="dash-field dash-field-full">
+                        <label>Gift video 🎁 <span class="dash-hint">tiny loop — auto-compressed</span></label>
+                        {% if person_content.ask_gift_video %}
+                        <video class="dash-preview dash-preview-gift" src="{{ person_content.ask_gift_video.url }}" autoplay loop muted playsinline></video>
+                        {% endif %}
+                        {{ ask_form.ask_gift_video }}
+                        {% if ask_form.ask_gift_video.errors %}<p class="dash-field-error">{{ ask_form.ask_gift_video.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="dash-field dash-field-full">
+                        <label>Background photo <span class="dash-hint">full page — picture of her</span></label>
+                        {% if person_content.background_image %}<img src="{{ person_content.background_image.url }}" class="dash-preview dash-preview-bg" alt="">{% endif %}
+                        {{ ask_form.background_image }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="dash-section dash-preview-box">
+                <h2 class="dash-section-title">Preview</h2>
+                <p class="dash-preview-title" id="preview-title">{{ preview_title }}</p>
+                <div class="dash-preview-buttons">
+                    <span class="dash-preview-yes" id="preview-yes">{{ person_content.ask_yes_button }}</span>
+                    <span class="dash-preview-no" id="preview-no">{{ person_content.ask_no_button }}</span>
+                </div>
+                <p class="dash-hint-block">When she chases No, these messages appear:</p>
+                <ul class="dash-preview-messages" id="preview-messages">
+                    {% for msg in preview_messages %}
+                    <li>{{ msg }}</li>
+                    {% empty %}
+                    <li>please...</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <button type="submit" class="dash-btn dash-btn-primary">Save ask page</button>
+        </form>
+    </section>
+
+    <!-- Other pages -->
+    <section class="dash-panel" id="panel-pages">
+        <div class="dash-preview-nav">
+            <span class="dash-preview-nav-label">Preview {{ invite.name }}'s pages:</span>
+            <a href="{% url 'preview_ask' %}?person={{ invite.id }}" target="_blank">1 Ask</a>
+            <a href="{% url 'preview_yay' %}?person={{ invite.id }}" target="_blank">2 Yay</a>
+            <a href="{% url 'preview_food' %}?person={{ invite.id }}" target="_blank">3 Food</a>
+            <a href="{% url 'preview_schedule' %}?person={{ invite.id }}" target="_blank">4 Schedule</a>
+            <a href="{% url 'preview_final' %}?person={{ invite.id }}" target="_blank">5 Final</a>
+        </div>
+        <form method="post" enctype="multipart/form-data" class="dash-form">
+            {% csrf_token %}
+            <input type="hidden" name="section" value="pages">
+
+            <div class="dash-section">
+                <h2 class="dash-section-title">Page 2 — Yay</h2>
+                <div class="dash-grid">
+                    <div class="dash-field">
+                        <label>Title</label>
+                        {{ pages_form.yay_title }}
+                    </div>
+                    <div class="dash-field">
+                        <label>Subtitle</label>
+                        {{ pages_form.yay_subtitle }}
+                    </div>
+                    <div class="dash-field">
+                        <label>Button</label>
+                        {{ pages_form.yay_button }}
+                    </div>
+                    <div class="dash-field dash-field-full">
+                        <label>Image</label>
+                        {% if person_content.yay_image %}<img src="{{ person_content.yay_image.url }}" class="dash-preview" alt="">{% endif %}
+                        {{ pages_form.yay_image }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="dash-section">
+                <h2 class="dash-section-title">Page 3 — Food</h2>
+                <div class="dash-grid">
+                    <div class="dash-field">
+                        <label>Title</label>
+                        {{ pages_form.food_title }}
+                    </div>
+                    <div class="dash-field">
+                        <label>Button</label>
+                        {{ pages_form.food_button }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="dash-section">
+                <h2 class="dash-section-title">Page 4 — Schedule</h2>
+                <div class="dash-grid">
+                    <div class="dash-field">
+                        <label>Title</label>
+                        {{ pages_form.schedule_title }}
+                    </div>
+                    <div class="dash-field">
+                        <label>Date label</label>
+                        {{ pages_form.schedule_date_label }}
+                    </div>
+                    <div class="dash-field">
+                        <label>Time label</label>
+                        {{ pages_form.schedule_time_label }}
+                    </div>
+                    <div class="dash-field">
+                        <label>Button</label>
+                        {{ pages_form.schedule_button }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="dash-section">
+                <h2 class="dash-section-title">Page 5 — Final</h2>
+                <p class="dash-hint-block">
+                    <a href="{% url 'preview_final' %}?person={{ invite.id }}" class="dash-preview-link" target="_blank">Open final page ↗</a>
+                </p>
+
+                <div class="dash-page-map">
+                    <div class="dash-page-map-row"><span>①</span> Profile photo — circle at top</div>
+                    <div class="dash-page-map-row"><span>②</span> Your message + P.S. note</div>
+                    <div class="dash-page-map-row"><span>③</span> Video poster — shows first for ~3 seconds</div>
+                    <div class="dash-page-map-row"><span>④</span> Then your video plays</div>
+                </div>
+
+                <div class="dash-grid">
+                    <div class="dash-field dash-field-full">
+                        <label>Title <span class="dash-hint">use {time}</span></label>
+                        {{ pages_form.final_title }}
+                    </div>
+                    <div class="dash-field dash-field-full">
+                        <label>P.S. note</label>
+                        {{ pages_form.final_note }}
+                    </div>
+                    <div class="dash-field dash-field-full">
+                        <label>Profile photo</label>
+                        {% if person_content.final_profile_image %}<img src="{{ person_content.final_profile_image.url }}" class="dash-preview dash-preview-round" alt="">{% endif %}
+                        {{ pages_form.final_profile_image }}
+                    </div>
+                    <div class="dash-field dash-field-full">
+                        <label>Video (mp4)</label>
+                        {% if person_content.final_video %}<p class="dash-hint">Saved: {{ person_content.final_video.name }}</p>{% endif %}
+                        {% if person_content.final_video_url %}<p class="dash-hint">Link: {{ person_content.final_video_url }}</p>{% endif %}
+                        {{ pages_form.final_video }}
+                        {% if pages_form.final_video.errors %}<p class="dash-field-error">{{ pages_form.final_video.errors.0 }}</p>{% endif %}
+                        {% if is_vercel %}
+                        <p class="dash-hint-block">Max {{ max_video_mb }}MB on Vercel — trim or paste a direct MP4 link.</p>
+                        {% endif %}
+                    </div>
+                    <div class="dash-field dash-field-full">
+                        <label>Or video link</label>
+                        {{ pages_form.final_video_url }}
+                    </div>
+                    <div class="dash-field dash-field-full">
+                        <label>Video poster</label>
+                        {% if person_content.final_video_poster %}<img src="{{ person_content.final_video_poster.url }}" class="dash-preview" alt="">{% endif %}
+                        {{ pages_form.final_video_poster }}
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="dash-btn dash-btn-primary">Save other pages</button>
+        </form>
+    </section>
+
+    <!-- Food options -->
+    <section class="dash-panel" id="panel-food">
+        <form method="post" enctype="multipart/form-data" class="dash-form">
+            {% csrf_token %}
+            <input type="hidden" name="section" value="food">
+            {{ food_formset.management_form }}
+
+            <div class="dash-section">
+                <h2 class="dash-section-title">{{ invite.name }}'s food options</h2>
+                <p class="dash-hint-block">Each row is one food button. Slug is the internal ID (e.g. pizza).</p>
+
+                {% for form in food_formset %}
+                <div class="dash-inline-card">
+                    {{ form.id }}
+                    <div class="dash-grid dash-grid-inline">
+                        <div class="dash-field">
+                            <label>Label</label>
+                            {{ form.label }}
+                        </div>
+                        <div class="dash-field">
+                            <label>Emoji</label>
+                            {{ form.emoji }}
+                        </div>
+                        <div class="dash-field">
+                            <label>Slug</label>
+                            {{ form.slug }}
+                        </div>
+                        <div class="dash-field">
+                            <label>Order</label>
+                            {{ form.order }}
+                        </div>
+                        <div class="dash-field dash-field-check">
+                            <label>{{ form.is_active }} Active</label>
+                        </div>
+                        <div class="dash-field dash-field-full">
+                            <label>Photo (optional)</label>
+                            {% if form.instance.image %}<img src="{{ form.instance.image.url }}" class="dash-preview dash-preview-sm" alt="">{% endif %}
+                            {{ form.image }}
+                        </div>
+                    </div>
+                    {% if form.DELETE %}
+                    <label class="dash-delete">{{ form.DELETE }} Delete</label>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <button type="submit" class="dash-btn dash-btn-primary">Save food options</button>
+        </form>
+    </section>
+
+    <!-- Time slots -->
+    <section class="dash-panel" id="panel-times">
+        <form method="post" class="dash-form">
+            {% csrf_token %}
+            <input type="hidden" name="section" value="times">
+            {{ time_formset.management_form }}
+
+            <div class="dash-section">
+                <h2 class="dash-section-title">{{ invite.name }}'s time slots</h2>
+
+                {% for form in time_formset %}
+                <div class="dash-inline-card">
+                    {{ form.id }}
+                    <div class="dash-grid dash-grid-inline">
+                        <div class="dash-field">
+                            <label>Time label</label>
+                            {{ form.label }}
+                        </div>
+                        <div class="dash-field">
+                            <label>Order</label>
+                            {{ form.order }}
+                        </div>
+                        <div class="dash-field dash-field-check">
+                            <label>{{ form.is_active }} Active</label>
+                        </div>
+                    </div>
+                    {% if form.DELETE %}
+                    <label class="dash-delete">{{ form.DELETE }} Delete</label>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <button type="submit" class="dash-btn dash-btn-primary">Save time slots</button>
+        </form>
+    </section>
+
+    <!-- Schedule & choices -->
+    <section class="dash-panel" id="panel-responses">
+        <div class="dash-section">
+            <h2 class="dash-section-title">{{ invite.name }}'s choices</h2>
+            <p class="dash-hint-block">Updates when she says yes, picks food, and sets the date.</p>
+            {% if submissions %}
+            <div class="dash-table-wrap">
+                <table class="dash-table">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Food</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Said yes</th>
+                            <th>Last update</th>
+                        </tr>
+                    </thead>
+                    <tbody id="responses-body">
+                        {% for s in submissions %}
+                        <tr class="{% if s.completed %}dash-row-done{% endif %}">
+                            <td><span class="dash-badge {% if s.completed %}dash-badge-done{% elif s.food_choice %}dash-badge-food{% else %}dash-badge-yes{% endif %}">{{ s.status_label }}</span></td>
+                            <td>{{ s.food_choice|default:"—" }}</td>
+                            <td>{% if s.date %}{{ s.date|date:"M j, Y" }}{% else %}—{% endif %}</td>
+                            <td>{{ s.time_slot|default:"—" }}</td>
+                            <td>{% if s.said_yes_at %}{{ s.said_yes_at|date:"M j, g:i A" }}{% else %}—{% endif %}</td>
+                            <td>{{ s.updated_at|date:"M j, g:i A" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="dash-empty">No choices yet — share her link and wait! 💗</p>
+            {% endif %}
+        </div>
+    </section>
+</main>
+
+<script>
+function activateTab(name) {
+    document.querySelectorAll('.dash-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.tab === name);
+    });
+    document.querySelectorAll('.dash-panel').forEach(p => {
+        p.classList.toggle('active', p.id === 'panel-' + name);
+    });
+    const url = new URL(window.location);
+    url.searchParams.set('tab', name);
+    window.history.replaceState({}, '', url);
+}
+
+document.querySelectorAll('.dash-tab').forEach(tab => {
+    tab.addEventListener('click', () => activateTab(tab.dataset.tab));
+});
+
+activateTab('{{ active_tab|default:"ask" }}');
+</script>
+<script src="{% static 'js/dashboard.js' %}"></script>
+<script>
+    initLiveActivity('{% url "live_activity" %}', '{{ invite.id }}');
+    initAskPreview('{{ invite.name|escapejs }}');
+    initCopyInviteLinks();
+    initVideoUploadLimit({{ max_video_mb }});
+    initGiftVideoCompress({{ max_gift_video_mb }});
+</script>
+{% endblock %}
