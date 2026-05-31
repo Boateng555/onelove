@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
@@ -108,6 +109,7 @@ def dashboard(request):
         'preview_messages': preview_messages,
         'preview_title': site.ask_title_display(),
         'active_tab': active_tab,
+        'media_uploads_blocked': settings.IS_VERCEL and not settings.USE_CLOUDINARY,
     })
 
 
