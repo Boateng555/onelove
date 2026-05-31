@@ -188,6 +188,8 @@ def preview_final(request):
 
 
 def serve_media(request, path):
+    import re
+
     from .models import StoredMedia
 
     try:
@@ -195,6 +197,32 @@ def serve_media(request, path):
     except StoredMedia.DoesNotExist as exc:
         raise Http404('Media not found') from exc
 
-    response = HttpResponse(bytes(obj.data), content_type=obj.content_type)
+    data = bytes(obj.data)
+    size = len(data)
+    content_type = obj.content_type or 'application/octet-stream'
+
+    range_header = request.META.get('HTTP_RANGE', '').strip()
+    if range_header:
+        match = re.match(r'bytes=(\d+)-(\d*)', range_header)
+        if match:
+            start = int(match.group(1))
+            end = int(match.group(2)) if match.group(2) else size - 1
+            end = min(end, size - 1)
+            if start >= size or start > end:
+                response = HttpResponse(status=416)
+                response['Content-Range'] = f'bytes */{size}'
+                return response
+
+            chunk = data[start:end + 1]
+            response = HttpResponse(chunk, status=206, content_type=content_type)
+            response['Content-Range'] = f'bytes {start}-{end}/{size}'
+            response['Content-Length'] = str(len(chunk))
+            response['Accept-Ranges'] = 'bytes'
+            response['Cache-Control'] = 'public, max-age=31536000, immutable'
+            return response
+
+    response = HttpResponse(data, content_type=content_type)
+    response['Content-Length'] = str(size)
+    response['Accept-Ranges'] = 'bytes'
     response['Cache-Control'] = 'public, max-age=31536000, immutable'
     return response

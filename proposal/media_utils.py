@@ -149,6 +149,11 @@ def validate_video_upload(file_obj, max_mb=80, label='Video'):
             'trim to a short clip or let the dashboard compress it.'
         )
 
+    if ext == '.webm' and label == 'Video':
+        raise ValidationError(
+            f'{label}: WebM does not play on iPhones. Upload MP4 or MOV from your phone.'
+        )
+
     return file_obj
 
 

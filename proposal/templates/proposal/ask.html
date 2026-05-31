@@ -15,10 +15,12 @@
         {% if site.ask_card_has_video %}
         <video
             class="media-gift-video"
+            src="{{ site.ask_gift_video.url }}"
             autoplay
             loop
             muted
             playsinline
+            webkit-playsinline
             preload="auto"
         >
             <source src="{{ site.ask_gift_video.url }}" type="{{ ask_gift_video_type }}">

@@ -47,11 +47,13 @@
         <video
             class="final-video"
             id="final-video"
+            src="{{ site.final_video_source }}"
             muted
             loop
             playsinline
+            webkit-playsinline
             {% if site.final_video_poster %}poster="{{ site.final_video_poster.url }}"{% endif %}
-            preload="metadata"
+            preload="auto"
         >
             <source src="{{ site.final_video_source }}" type="{{ final_video_type }}">
         </video>

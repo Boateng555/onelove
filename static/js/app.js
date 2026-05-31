@@ -162,21 +162,43 @@ function hideVideoHintIfLoaded() {
 }
 
 /**
- * Final page — show poster image first, then gently start video.
+ * Final page — show poster first, then start video when it can actually play.
  */
 function initFinalVideo() {
     const video = document.getElementById('final-video');
     const poster = document.getElementById('video-poster');
     if (!video) return;
 
-    const startVideo = () => {
-        video.play().catch(() => {});
+    let started = false;
+
+    const revealVideo = () => {
         video.classList.add('is-playing');
         if (poster) {
             setTimeout(() => poster.classList.add('is-hidden'), 400);
         }
     };
 
-    // Let her see the poster / profile first — sweet pause
+    const startVideo = () => {
+        if (started) return;
+        started = true;
+
+        const playPromise = video.play();
+        if (playPromise && typeof playPromise.then === 'function') {
+            playPromise.then(revealVideo).catch(() => {
+                started = false;
+                video.classList.remove('is-playing');
+            });
+        } else {
+            revealVideo();
+        }
+    };
+
+    video.addEventListener('error', () => {
+        started = false;
+        video.classList.remove('is-playing');
+        if (poster) poster.classList.remove('is-hidden');
+    });
+
+    video.load();
     setTimeout(startVideo, 3500);
 }

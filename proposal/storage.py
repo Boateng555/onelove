@@ -25,6 +25,12 @@ class DatabaseStorage(Storage):
             or mimetypes.guess_type(name)[0]
             or 'application/octet-stream'
         )
+        if name.lower().endswith('.mp4'):
+            content_type = 'video/mp4'
+        elif name.lower().endswith('.webm'):
+            content_type = 'video/webm'
+        elif name.lower().endswith('.mov'):
+            content_type = 'video/quicktime'
         StoredMedia.objects.update_or_create(
             name=name,
             defaults={
