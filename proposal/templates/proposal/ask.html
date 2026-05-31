@@ -50,7 +50,7 @@
 
     <div class="btn-row btn-row-ask">
         {% if is_preview %}
-        <a href="{% url 'preview_yay' %}" class="btn btn-yes" id="yes-btn">{{ site.ask_yes_button }}</a>
+        <a href="{% url 'preview_yay' %}?person={{ invite.id }}" class="btn btn-yes" id="yes-btn">{{ site.ask_yes_button }}</a>
         {% else %}
         <a href="{% url 'invite_yay' token=invite.token %}" class="btn btn-yes" id="yes-btn">{{ site.ask_yes_button }}</a>
         {% endif %}

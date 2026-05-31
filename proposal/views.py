@@ -174,12 +174,21 @@ def _staff_preview_required(request):
     return request.user.is_authenticated and request.user.is_staff
 
 
+def _preview_invite(request):
+    invite_id = request.GET.get('person') or request.session.get('preview_person_id')
+    if not invite_id:
+        return None
+    invite = Invite.objects.filter(pk=invite_id).select_related('content').first()
+    if invite:
+        request.session['preview_person_id'] = invite.id
+    return invite
+
+
 @login_required(login_url='dashboard_login')
 def preview_ask(request):
     if not _staff_preview_required(request):
         return redirect('home')
-    invite_id = request.GET.get('person')
-    invite = Invite.objects.filter(pk=invite_id).select_related('content').first()
+    invite = _preview_invite(request)
     if not invite:
         return redirect('dashboard')
     site = invite.content
@@ -197,7 +206,7 @@ def preview_ask(request):
 def preview_yay(request):
     if not _staff_preview_required(request):
         return redirect('home')
-    invite = Invite.objects.filter(pk=request.GET.get('person')).select_related('content').first()
+    invite = _preview_invite(request)
     if not invite:
         return redirect('dashboard')
     return render(request, 'proposal/yay.html', {
@@ -208,12 +217,15 @@ def preview_yay(request):
 
 
 @login_required(login_url='dashboard_login')
+@require_http_methods(['GET', 'POST'])
 def preview_food(request):
     if not _staff_preview_required(request):
         return redirect('home')
-    invite = Invite.objects.filter(pk=request.GET.get('person')).select_related('content').first()
+    invite = _preview_invite(request)
     if not invite:
         return redirect('dashboard')
+    if request.method == 'POST':
+        return redirect(f'/preview/schedule/?person={invite.id}')
     return render(request, 'proposal/food.html', {
         'invite': invite,
         'site': invite.content,
@@ -223,12 +235,15 @@ def preview_food(request):
 
 
 @login_required(login_url='dashboard_login')
+@require_http_methods(['GET', 'POST'])
 def preview_schedule(request):
     if not _staff_preview_required(request):
         return redirect('home')
-    invite = Invite.objects.filter(pk=request.GET.get('person')).select_related('content').first()
+    invite = _preview_invite(request)
     if not invite:
         return redirect('dashboard')
+    if request.method == 'POST':
+        return redirect(f'/preview/final/?person={invite.id}')
     return render(request, 'proposal/schedule.html', {
         'invite': invite,
         'site': invite.content,
@@ -241,7 +256,7 @@ def preview_schedule(request):
 def preview_final(request):
     if not _staff_preview_required(request):
         return redirect('home')
-    invite = Invite.objects.filter(pk=request.GET.get('person')).select_related('content').first()
+    invite = _preview_invite(request)
     if not invite:
         return redirect('dashboard')
     site = invite.content

@@ -7,7 +7,12 @@
 <div class="card card-food">
     <h1 class="title">{{ site.food_title }}</h1>
 
-    <form method="post" id="food-form" class="food-form">
+    <form
+        method="post"
+        id="food-form"
+        class="food-form"
+        {% if is_preview %}action="{% url 'preview_food' %}?person={{ invite.id }}"{% endif %}
+    >
         {% csrf_token %}
         <input type="hidden" name="food_choice" id="food-choice" value="">
 

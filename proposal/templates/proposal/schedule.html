@@ -12,7 +12,11 @@
 
     <h1 class="title">{{ site.schedule_title }}</h1>
 
-    <form method="post" class="schedule-form">
+    <form
+        method="post"
+        class="schedule-form"
+        {% if is_preview %}action="{% url 'preview_schedule' %}?person={{ invite.id }}"{% endif %}
+    >
         {% csrf_token %}
 
         <label class="field-label" for="date">{{ site.schedule_date_label }}</label>
