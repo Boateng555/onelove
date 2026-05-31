@@ -126,6 +126,16 @@ def optimize_uploaded_image(file_obj, max_side=1600, quality=82):
     return ContentFile(buffer.read(), name=f'{safe_name}.jpg')
 
 
+def is_video_upload(file_obj) -> bool:
+    if not file_obj:
+        return False
+    content_type = getattr(file_obj, 'content_type', '') or ''
+    if content_type.startswith('video/'):
+        return True
+    ext = Path(getattr(file_obj, 'name', '')).suffix.lower()
+    return ext in ALLOWED_VIDEO_EXTENSIONS
+
+
 def validate_video_upload(file_obj, max_mb=80, label='Video'):
     """Accept common phone video formats and enforce a size limit."""
     if not file_obj or not hasattr(file_obj, 'read'):

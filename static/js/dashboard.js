@@ -264,13 +264,21 @@ function initGiftVideoCompress(maxMb) {
     const maxBytes = Math.max(1, maxMb) * 1024 * 1024;
     const targetBytes = Math.floor(maxBytes * 0.75);
 
-    document.querySelectorAll('input[data-gift-video]').forEach((input) => {
+    document.querySelectorAll('input[data-gift-video], input[data-gift-media]').forEach((input) => {
         input.addEventListener('change', async () => {
             const file = input.files && input.files[0];
-            if (!file || !file.type.startsWith('video/')) return;
+            if (!file) return;
 
             const wrap = input.closest('.dash-file-wrap');
             const status = wrap && wrap.querySelector('.dash-gift-compress-status');
+
+            if (!file.type.startsWith('video/')) {
+                if (status) {
+                    status.hidden = false;
+                    status.textContent = file.type.includes('gif') ? 'Live GIF ready ✓' : 'Photo ready ✓';
+                }
+                return;
+            }
 
             if (file.size <= targetBytes) return;
 
@@ -405,7 +413,7 @@ function initVideoUploadLimit(maxMb) {
     document.querySelectorAll('input[type="file"][accept*="video"]').forEach((input) => {
         input.addEventListener('change', () => {
             const file = input.files && input.files[0];
-            if (!file) return;
+            if (!file || !file.type.startsWith('video/')) return;
             if (file.size > safeBytes) {
                 const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
                 alert(
@@ -421,7 +429,7 @@ function initVideoUploadLimit(maxMb) {
         form.addEventListener('submit', (event) => {
             const videoInput = form.querySelector('input[type="file"][accept*="video"]');
             const file = videoInput && videoInput.files && videoInput.files[0];
-            if (file && file.size > safeBytes) {
+            if (file && file.type.startsWith('video/') && file.size > safeBytes) {
                 event.preventDefault();
                 alert(`Video is too large. Max ${maxMb}MB — trim it or use a video link instead.`);
             }

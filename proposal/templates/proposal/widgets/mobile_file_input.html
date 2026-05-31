@@ -5,13 +5,13 @@
         <span class="dash-file-btn-text">{{ widget.button_text }}</span>
     </label>
     <span class="dash-file-hint">{{ widget.upload_hint }}</span>
-    {% elif widget.file_kind == 'gift-video' %}
+    {% elif widget.file_kind == 'gift-media' or widget.file_kind == 'gift-video' %}
     <label class="dash-file-btn dash-file-btn-video dash-file-btn-gift" for="{{ widget.attrs.id }}">
         <span class="dash-file-btn-icon">{{ widget.button_icon }}</span>
         <span class="dash-file-btn-text">{{ widget.button_text }}</span>
     </label>
     <span class="dash-file-hint">{{ widget.upload_hint }}</span>
-    <span class="dash-file-hint dash-gift-compress-status" hidden>Compressing gift video…</span>
+    <span class="dash-file-hint dash-gift-compress-status" hidden></span>
     {% else %}
     <label class="dash-file-btn dash-file-btn-video" for="{{ widget.attrs.id }}">
         <span class="dash-file-btn-icon">🎬</span>

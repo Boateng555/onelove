@@ -42,8 +42,8 @@ class MobileVideoInput(ClearableFileInput):
         return context
 
 
-class MobileGiftVideoInput(ClearableFileInput):
-    """Tiny looping gift video for the ask card — auto-compressed in the browser."""
+class MobileGiftMediaInput(ClearableFileInput):
+    """Photo, live GIF, or tiny looping video for the ask card."""
 
     template_name = 'proposal/widgets/mobile_file_input.html'
 
@@ -51,14 +51,21 @@ class MobileGiftVideoInput(ClearableFileInput):
         context = super().get_context(name, value, attrs)
         widget = context['widget']
         widget.setdefault('attrs', {})
-        widget['attrs'].setdefault('accept', 'video/*,.mp4,.mov,.webm')
+        widget['attrs'].setdefault(
+            'accept',
+            'image/*,.gif,image/gif,video/*,.mp4,.mov,.webm,.heic,.heif',
+        )
         widget['attrs']['class'] = (widget['attrs'].get('class', '') + ' dash-file-input-hidden').strip()
-        widget['attrs']['data-gift-video'] = '1'
-        widget['file_kind'] = 'gift-video'
+        widget['attrs']['data-gift-media'] = '1'
+        widget['file_kind'] = 'gift-media'
         widget['max_video_mb'] = getattr(settings, 'MAX_GIFT_VIDEO_MB', 2)
         widget['button_icon'] = '🎁'
-        widget['button_text'] = 'Tap to add gift video'
+        widget['button_text'] = 'Tap to add gift photo or video'
         widget['upload_hint'] = (
-            f'Short loop · auto-compressed small · max {widget["max_video_mb"]}MB'
+            'Photo, live GIF, or short video · from camera or library'
         )
         return context
+
+
+# Keep old name for imports
+MobileGiftVideoInput = MobileGiftMediaInput

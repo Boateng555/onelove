@@ -4,11 +4,11 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.core.exceptions import ValidationError
 from django.forms import modelformset_factory
 
-from .media_utils import optimize_uploaded_image, validate_video_upload
+from .media_utils import is_video_upload, optimize_uploaded_image, validate_video_upload
 from .models import FoodOption, Invite, InviteContent, SiteContent, TimeSlot
 from .widgets import (
     MobileAnimatedImageInput,
-    MobileGiftVideoInput,
+    MobileGiftMediaInput,
     MobileImageInput,
     MobileVideoInput,
 )
@@ -71,7 +71,13 @@ class AskPageForm(MediaOptimizedForm):
     image_sizes = {
         'background_image': 1920,
     }
-    gift_video_fields = ['ask_gift_video']
+    gift_video_fields = []
+
+    ask_gift_media = forms.FileField(
+        required=False,
+        widget=MobileGiftMediaInput(),
+        label='Gift in the card',
+    )
 
     class Meta:
         model = InviteContent
@@ -80,7 +86,6 @@ class AskPageForm(MediaOptimizedForm):
             'ask_yes_button',
             'ask_no_button',
             'no_runaway_messages',
-            'ask_gift_video',
             'background_image',
         ]
         widgets = {
@@ -97,7 +102,6 @@ class AskPageForm(MediaOptimizedForm):
                 'placeholder': DEFAULT_NO_MESSAGES,
                 'id': 'field-runaway-messages',
             }),
-            'ask_gift_video': MobileGiftVideoInput(),
             'background_image': MobileImageInput(),
         }
 
@@ -105,6 +109,60 @@ class AskPageForm(MediaOptimizedForm):
         super().__init__(*args, **kwargs)
         if self.instance and not self.instance.no_runaway_messages.strip():
             self.initial['no_runaway_messages'] = DEFAULT_NO_MESSAGES
+
+    def clean(self):
+        cleaned = super().clean()
+        if any(self.errors):
+            return cleaned
+
+        media = self.files.get('ask_gift_media')
+        if not media:
+            return cleaned
+
+        max_gift_mb = getattr(settings, 'MAX_GIFT_VIDEO_MB', 2)
+        if is_video_upload(media):
+            try:
+                cleaned['ask_gift_media'] = validate_video_upload(
+                    media,
+                    max_mb=max_gift_mb,
+                    label='Gift video',
+                )
+            except ValidationError as exc:
+                self.add_error('ask_gift_media', exc)
+        else:
+            try:
+                cleaned['ask_gift_media'] = optimize_uploaded_image(media, max_side=600)
+            except ValidationError as exc:
+                self.add_error('ask_gift_media', exc)
+
+        return cleaned
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        media = self.cleaned_data.get('ask_gift_media')
+
+        if media:
+            if is_video_upload(media):
+                if instance.ask_gift_image:
+                    instance.ask_gift_image.delete(save=False)
+                    instance.ask_gift_image = None
+                instance.ask_gift_video = media
+            else:
+                if instance.ask_gift_video:
+                    instance.ask_gift_video.delete(save=False)
+                    instance.ask_gift_video = None
+                instance.ask_gift_image = media
+        elif self.data.get('clear_ask_gift'):
+            if instance.ask_gift_video:
+                instance.ask_gift_video.delete(save=False)
+                instance.ask_gift_video = None
+            if instance.ask_gift_image:
+                instance.ask_gift_image.delete(save=False)
+                instance.ask_gift_image = None
+
+        if commit:
+            instance.save()
+        return instance
 
 
 class OtherPagesForm(MediaOptimizedForm):

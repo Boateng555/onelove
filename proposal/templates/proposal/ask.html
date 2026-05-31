@@ -25,6 +25,12 @@
         >
             <source src="{{ site.ask_gift_video.url }}" type="{{ ask_gift_video_type }}">
         </video>
+        {% elif site.ask_gift_image %}
+        <img
+            src="{{ site.ask_gift_image.url }}"
+            alt=""
+            class="media-img{% if '.gif' in site.ask_gift_image.name|lower %} media-live{% endif %}"
+        >
         {% elif site.ask_image %}
         <img
             src="{{ site.ask_image.url }}"
@@ -33,7 +39,7 @@
         >
         {% else %}
         <div class="media-placeholder">
-            <span>add gift video in dashboard 🎁</span>
+            <span>add gift photo or video in dashboard 🎁</span>
         </div>
         {% endif %}
     </div>

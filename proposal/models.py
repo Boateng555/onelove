@@ -97,6 +97,9 @@ class ContentMixin:
     def ask_card_has_video(self):
         return bool(self.ask_gift_video)
 
+    def ask_card_has_gift(self):
+        return bool(self.ask_gift_video or getattr(self, 'ask_gift_image', None))
+
 
 class InviteContent(ContentMixin, models.Model):
     """All page text and media for one person — completely separate from others."""
@@ -106,6 +109,7 @@ class InviteContent(ContentMixin, models.Model):
     ask_yes_button = models.CharField(max_length=50, default='YES 💗')
     ask_no_button = models.CharField(max_length=50, default='no... 🙈')
     ask_gift_video = models.FileField(upload_to='invites/gift/', blank=True, null=True)
+    ask_gift_image = models.ImageField(upload_to='invites/gift/', blank=True, null=True)
     background_image = models.ImageField(upload_to='invites/backgrounds/', blank=True, null=True)
     no_runaway_messages = models.TextField(
         blank=True,

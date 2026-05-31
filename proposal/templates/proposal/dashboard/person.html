@@ -163,12 +163,20 @@
                         {% if ask_form.no_runaway_messages.errors %}<p class="dash-field-error">{{ ask_form.no_runaway_messages.errors.0 }}</p>{% endif %}
                     </div>
                     <div class="dash-field dash-field-full">
-                        <label>Gift video 🎁 <span class="dash-hint">tiny loop — auto-compressed</span></label>
+                        <label>Gift in the card 🎁 <span class="dash-hint">photo, live GIF, or short video</span></label>
                         {% if person_content.ask_gift_video %}
                         <video class="dash-preview dash-preview-gift" src="{{ person_content.ask_gift_video.url }}" autoplay loop muted playsinline></video>
+                        {% elif person_content.ask_gift_image %}
+                        <img src="{{ person_content.ask_gift_image.url }}" class="dash-preview dash-preview-gift{% if '.gif' in person_content.ask_gift_image.name|lower %} dash-preview-live{% endif %}" alt="">
                         {% endif %}
-                        {{ ask_form.ask_gift_video }}
-                        {% if ask_form.ask_gift_video.errors %}<p class="dash-field-error">{{ ask_form.ask_gift_video.errors.0 }}</p>{% endif %}
+                        {{ ask_form.ask_gift_media }}
+                        {% if ask_form.ask_gift_media.errors %}<p class="dash-field-error">{{ ask_form.ask_gift_media.errors.0 }}</p>{% endif %}
+                        {% if person_content.ask_gift_video or person_content.ask_gift_image %}
+                        <label class="dash-file-clear">
+                            <input type="checkbox" name="clear_ask_gift" value="1">
+                            Remove gift photo/video
+                        </label>
+                        {% endif %}
                     </div>
                     <div class="dash-field dash-field-full">
                         <label>Background photo <span class="dash-hint">full page — picture of her</span></label>
