@@ -1,5 +1,5 @@
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods, require_POST
@@ -182,3 +182,16 @@ def preview_final(request):
         'final_title': site.final_title_display('6:00 PM'),
         'is_preview': True,
     })
+
+
+def serve_media(request, path):
+    from .models import StoredMedia
+
+    try:
+        obj = StoredMedia.objects.get(name=path)
+    except StoredMedia.DoesNotExist as exc:
+        raise Http404('Media not found') from exc
+
+    response = HttpResponse(bytes(obj.data), content_type=obj.content_type)
+    response['Cache-Control'] = 'public, max-age=31536000, immutable'
+    return response

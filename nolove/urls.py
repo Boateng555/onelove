@@ -19,10 +19,16 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from proposal.views import serve_media
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('proposal.urls')),
 ]
 
-if settings.DEBUG:
+if getattr(settings, 'USE_DB_MEDIA', False):
+    urlpatterns += [
+        path('media/<path:path>', serve_media, name='serve_media'),
+    ]
+elif settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

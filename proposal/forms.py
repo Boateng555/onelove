@@ -28,14 +28,6 @@ class MediaOptimizedForm(forms.ModelForm):
             return cleaned
 
         max_video_mb = getattr(settings, 'MAX_VIDEO_SIZE_MB', 80)
-        upload_fields = list(self.image_sizes.keys()) + list(self.video_fields)
-        has_upload = any(cleaned.get(name) for name in upload_fields)
-
-        if has_upload and getattr(settings, 'IS_VERCEL', False) and not getattr(settings, 'USE_CLOUDINARY', False):
-            raise ValidationError(
-                'Photo and video uploads need Cloudinary on Vercel. '
-                'Add CLOUDINARY_URL in Vercel → Settings → Environment Variables, then redeploy.'
-            )
 
         for field_name, max_side in self.image_sizes.items():
             uploaded = cleaned.get(field_name)

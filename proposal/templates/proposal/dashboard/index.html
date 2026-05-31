@@ -26,13 +26,6 @@
     </div>
     {% endif %}
 
-    {% if media_uploads_blocked %}
-    <div class="dash-message dash-message-error">
-        Photo and video uploads need Cloudinary on Vercel.
-        Sign up free at cloudinary.com, copy your CLOUDINARY_URL, add it in Vercel environment variables, then redeploy.
-    </div>
-    {% endif %}
-
     <nav class="dash-tabs" role="tablist">
         <button type="button" class="dash-tab" data-tab="live">Live activity</button>
         <button type="button" class="dash-tab" data-tab="ask">Ask page 💗</button>

@@ -2,6 +2,23 @@ from django.db import models
 from django.utils import timezone
 
 
+class StoredMedia(models.Model):
+    """Optimized uploads kept in Postgres for serverless hosting."""
+
+    name = models.CharField(max_length=512, unique=True, db_index=True)
+    data = models.BinaryField()
+    content_type = models.CharField(max_length=128, default='application/octet-stream')
+    size = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'stored media'
+        verbose_name_plural = 'stored media'
+
+    def __str__(self):
+        return self.name
+
+
 class SiteContent(models.Model):
     """Single row — all editable page text and media."""
 

@@ -119,6 +119,8 @@ else:
         }
     }
 
+USE_DB_MEDIA = bool(database_url) and not USE_CLOUDINARY
+
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -146,16 +148,22 @@ if USE_CLOUDINARY:
     }
     MEDIA_URL = '/media/'
 else:
+    default_storage = (
+        'proposal.storage.DatabaseStorage'
+        if USE_DB_MEDIA
+        else 'django.core.files.storage.FileSystemStorage'
+    )
     STORAGES = {
         'default': {
-            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+            'BACKEND': default_storage,
         },
         'staticfiles': {
             'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
         },
     }
     MEDIA_URL = '/media/'
-    MEDIA_ROOT = BASE_DIR / 'media'
+    if not USE_DB_MEDIA:
+        MEDIA_ROOT = BASE_DIR / 'media'
 
 LOGIN_URL = 'dashboard_login'
 LOGIN_REDIRECT_URL = 'dashboard'
