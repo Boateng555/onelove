@@ -11,3 +11,4 @@ staticfiles/
 *.log
 cookies.txt
 .DS_Store
+.vercel
